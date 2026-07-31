@@ -8,7 +8,35 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-  /* Animasi Getaran Motor Matic */
+    /* FIXING HEIGHT: html & body wajib di-set 100% agar h-full berfungsi di dalam iframe */
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      height: 100%; 
+      width: 100%; 
+      background: #e5e7eb; 
+    }
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      -webkit-user-select: none; 
+      user-select: none; 
+      overflow: hidden; 
+    }
+    #map { 
+      width: 100%; 
+      height: 100%; 
+      background: #e5e7eb; 
+    }
+    .glass-panel { 
+      background: rgba(255, 255, 255, 0.75); 
+      backdrop-filter: blur(20px); 
+      -webkit-backdrop-filter: blur(20px); 
+      border-top: 1px solid rgba(255,255,255,0.6); 
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.1); 
+    }
+    .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+    
+    /* Animasi Getaran Motor Matic */
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
       25% { transform: translate(-0.3px, -0.5px) rotate(-0.8deg); }
@@ -20,15 +48,15 @@
       animation: bikeRumble 0.15s infinite linear;
       filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5));
     }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-user-select: none; user-select: none; margin: 0; }
-    #map { width: 100%; height: 100%; background: #e5e7eb; }
-    .glass-panel { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.6); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
-    .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-800 overflow-hidden">
-    <div class="relative w-full h-full flex flex-col">
+<body class="text-slate-800">
+  <div class="relative w-full h-full flex flex-col">
+    
+    <!-- Map Container -->
     <div id="map" class="absolute inset-0 z-0"></div>
+
+    <!-- Header Floating -->
     <div class="absolute top-0 left-0 right-0 z-10 p-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <div class="glass-panel rounded-2xl p-3 flex items-center justify-between shadow-md" style="background: rgba(255, 255, 255, 0.85);">
         <div class="flex items-center space-x-2">
@@ -43,7 +71,11 @@
         </button>
       </div>
     </div>
+
+    <!-- Bottom Panel (Stats & Controls) -->
     <div class="absolute bottom-0 left-0 right-0 z-10 glass-panel rounded-t-[32px] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+      
+      <!-- Stats Grid -->
       <div class="grid grid-cols-2 gap-4 mb-6">
         <div class="bg-slate-50/80 border border-slate-100 rounded-2xl p-4 text-center">
           <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Kecepatan</p>
@@ -60,16 +92,20 @@
           </div>
         </div>
       </div>
+
+      <!-- Duration & Action Button -->
       <div class="flex items-center space-x-4">
         <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl p-3 w-20 h-16">
           <span id="timeVal" class="text-base font-black text-slate-800 tabular-nums">00:00</span>
           <span class="text-[9px] font-bold text-slate-500 uppercase">Durasi</span>
         </div>
+        
         <button id="trackBtn" class="flex-1 h-16 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center space-x-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           <span>Mulai Perjalanan</span>
         </button>
       </div>
+
     </div>
   </div>
 
@@ -78,8 +114,7 @@
     let map, userMarker, polyline;
     let isTracking = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
 
-    // Masukkan URL GeoJSON Anda di sini (Opsional)
-    const URL_GEOJSON_ROUTE = "https://gist.githubusercontent.com/gamailmy/a5ab1891f23201f428781b6f0a806bc9/raw/0c6bd3a839d7e123e21cc4e754e4091ac052caec/rute-oneaspal.geojson"; 
+    const URL_GEOJSON_ROUTE = ""; 
 
     function initMap() {
       map = L.map('map', { zoomControl: false }).setView([-6.2088, 106.8456], 13);
@@ -115,43 +150,28 @@
       document.getElementById('statusText').innerText = "Sedang melacak..."; document.getElementById('statusText').classList.add('text-emerald-600');
       document.getElementById('speedVal').innerText = "0.0"; document.getElementById('distVal').innerText = "0.00";
 
-      // Buat marker ikon motor matic dengan animasi berjalan
+      // Ikon Motor Matic Tajam & Animasi Getar
       const bikeIcon = L.divIcon({
         className: 'bike-moving-icon',
         html: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
-          <!-- Bayangan -->
           <ellipse cx="32" cy="52" rx="18" ry="3" fill="rgba(0,0,0,0.3)"/>
-          
-          <!-- Garis Jalan/Jejak -->
           <path d="M14 52 H50" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.7"/>
-          
-          <!-- Roda Belakang & Cakram -->
           <circle cx="16" cy="44" r="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
           <circle cx="16" cy="44" r="4" fill="#334155"/>
           <path d="M16 40 V48 M12 44 H20" stroke="#f59e0b" stroke-width="1.5"/>
-          
-          <!-- Roda Depan & Cakram -->
           <circle cx="48" cy="44" r="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
           <circle cx="48" cy="44" r="4" fill="#334155"/>
           <path d="M48 40 V48 M44 44 H52" stroke="#f59e0b" stroke-width="1.5"/>
-          
-          <!-- Bodi Motor Matic (Tajam & Melengkung) -->
           <path d="M16 44 C16 35, 22 30, 30 28 L40 26 C46 25, 50 32, 48 40 L48 44" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
           <path d="M30 28 L35 20 H42 C44 20, 45 22, 44 24 L40 26" fill="#fbbf24" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-          
-          <!-- Lampu Depan -->
           <path d="M44 30 C46 30, 48 32, 48 35 L44 35 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1"/>
-          
-          <!-- Setang & Cermin -->
           <path d="M40 26 L38 18 M42 18 H34" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
           <circle cx="42" cy="18" r="2" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
           <circle cx="34" cy="18" r="2" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
-          
-          <!-- Jok -->
           <path d="M22 32 C25 28, 30 27, 34 29 L32 33 H22Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
         </svg>`,
         iconSize: [48, 48],
-        iconAnchor: [24, 42] // Diperbaiki agar pas di atas jalan
+        iconAnchor: [24, 42]
       });
 
       if (userMarker) map.removeLayer(userMarker);
