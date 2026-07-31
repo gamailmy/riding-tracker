@@ -8,6 +8,17 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+  /* Animasi Getaran Motor */
+    @keyframes bikeRumble {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-0.5px, -1px) rotate(-1.5deg); }
+      50% { transform: translate(0.5px, 0) rotate(1deg); }
+      75% { transform: translate(-0.5px, 1px) rotate(-1deg); }
+      100% { transform: translate(0.5px, -1px) rotate(1.5deg); }
+    }
+    .bike-moving-icon svg {
+      animation: bikeRumble 0.2s infinite linear;
+    }
     body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-user-select: none; user-select: none; margin: 0; }
     #map { width: 100%; height: 100%; background: #e5e7eb; }
     .glass-panel { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.6); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
@@ -103,10 +114,17 @@
       document.getElementById('statusText').innerText = "Sedang melacak..."; document.getElementById('statusText').classList.add('text-emerald-600');
       document.getElementById('speedVal').innerText = "0.0"; document.getElementById('distVal').innerText = "0.00";
 
+      // Buat marker ikon motor dengan animasi berjalan
       const bikeIcon = L.divIcon({
-        className: 'custom-bike-icon',
-        html: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.4));"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h3l3 5.5"/><path d="M5.5 14L9 7h6l-2 7H5.5z"/></svg>`,
-        iconSize: [40, 40], iconAnchor: [20, 20]
+        className: 'bike-moving-icon', // Class ini memicu animasi CSS
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="#f59e0b" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5));">
+          <circle cx="5.5" cy="17.5" r="3.5"/>
+          <circle cx="18.5" cy="17.5" r="3.5"/>
+          <path d="M15 6h3l3 5.5"/>
+          <path d="M5.5 14L9 7h6l-2 7H5.5z"/>
+        </svg>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
       });
 
       if (userMarker) map.removeLayer(userMarker);
