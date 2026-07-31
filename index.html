@@ -4,38 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>One Aspal Club - Riding Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* FIXING HEIGHT: html & body wajib di-set 100% agar h-full berfungsi di dalam iframe */
-    html, body { 
-      margin: 0; 
-      padding: 0; 
-      height: 100%; 
-      width: 100%; 
-      background: #e5e7eb; 
-    }
-    body { 
-      font-family: 'Plus Jakarta Sans', sans-serif; 
-      -webkit-user-select: none; 
-      user-select: none; 
-      overflow: hidden; 
-    }
-    #map { 
-      width: 100%; 
-      height: 100%; 
-      background: #e5e7eb; 
-    }
-    .glass-panel { 
-      background: rgba(255, 255, 255, 0.75); 
-      backdrop-filter: blur(20px); 
-      -webkit-backdrop-filter: blur(20px); 
-      border-top: 1px solid rgba(255,255,255,0.6); 
-      box-shadow: 0 -10px 40px rgba(0,0,0,0.1); 
-    }
-    .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+    html, body { height: 100%; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; overflow: hidden; }
     
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #e5e7eb; z-index: 0; }
+    .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+
+    /* UI Overlay */
+    .ui-overlay { position: absolute; left: 0; right: 0; z-index: 10; pointer-events: none; }
+    .ui-overlay > * { pointer-events: auto; }
+
+    .header-container { top: 0; padding: 16px; padding-top: calc(env(safe-area-inset-top) + 16px); }
+    .header-box {
+      background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.6); border-radius: 16px; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-circle { width: 36px; height: 36px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .header-title { font-size: 14px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.2; }
+    .header-status { font-size: 10px; font-weight: 700; color: #64748b; }
+    .header-btn { background: #f1f5f9; border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .header-btn:active { transform: scale(0.9); }
+
+    .bottom-container { bottom: 0; padding: 24px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px); background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.6); border-top-left-radius: 32px; border-top-right-radius: 32px; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .stat-card-light { background: rgba(248, 250, 252, 0.8); border: 1px solid #f1f5f9; border-radius: 16px; padding: 16px; text-align: center; }
+    .stat-card-dark { background: #0f172a; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .stat-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+    .stat-label-light { color: #fbbf24; }
+    .stat-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1; }
+    .stat-value-light { color: #ffffff; }
+    .stat-unit { font-size: 12px; font-weight: 700; color: #64748b; margin-left: 4px; }
+    .stat-unit-light { color: #94a3b8; }
+
+    .action-row { display: flex; align-items: center; gap: 16px; }
+    .duration-box { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; width: 80px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    .duration-val { font-size: 16px; font-weight: 800; color: #1e293b; font-variant-numeric: tabular-nums; }
+    .duration-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+
+    .track-btn { flex: 1; height: 64px; border: none; border-radius: 16px; font-size: 16px; font-weight: 900; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); background: linear-gradient(to right, #f59e0b, #d97706); }
+    .track-btn:active { transform: scale(0.97); }
+    .track-btn.stop { background: linear-gradient(to right, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+
     /* Animasi Getaran Motor Matic */
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
@@ -44,68 +59,56 @@
       75% { transform: translate(-0.3px, 0.5px) rotate(-0.5deg); }
       100% { transform: translate(0.3px, -0.5px) rotate(0.8deg); }
     }
-    .bike-moving-icon svg {
-      animation: bikeRumble 0.15s infinite linear;
-      filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5));
-    }
+    .bike-moving-icon svg { animation: bikeRumble 0.15s infinite linear; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5)); }
   </style>
 </head>
-<body class="text-slate-800">
-  <div class="relative w-full h-full flex flex-col">
-    
-    <!-- Map Container -->
-    <div id="map" class="absolute inset-0 z-0"></div>
+<body>
+  <div id="map"></div>
 
-    <!-- Header Floating -->
-    <div class="absolute top-0 left-0 right-0 z-10 p-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
-      <div class="glass-panel rounded-2xl p-3 flex items-center justify-between shadow-md" style="background: rgba(255, 255, 255, 0.85);">
-        <div class="flex items-center space-x-2">
-          <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-xl">🏍️</div>
-          <div>
-            <h1 class="text-sm font-black text-slate-900 tracking-wide">RIDING TRACKER</h1>
-            <p id="statusText" class="text-[10px] font-bold text-slate-500">Siap memulai perjalanan</p>
-          </div>
+  <!-- Header -->
+  <div class="ui-overlay header-container">
+    <div class="header-box">
+      <div class="header-left">
+        <div class="logo-circle">🏍️</div>
+        <div>
+          <h1 class="header-title">RIDING TRACKER</h1>
+          <p id="statusText" class="header-status">Siap memulai perjalanan</p>
         </div>
-        <button id="centerBtn" class="p-2 bg-slate-100 rounded-xl active:scale-90 transition">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
+      </div>
+      <button id="centerBtn" class="header-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Panel -->
+  <div class="ui-overlay bottom-container">
+    <div class="stats-grid">
+      <div class="stat-card-light">
+        <div class="stat-label">Kecepatan</div>
+        <div style="display:flex; align-items:flex-end; justify-content:center;">
+          <span id="speedVal" class="stat-value">0.0</span>
+          <span class="stat-unit">km/jam</span>
+        </div>
+      </div>
+      <div class="stat-card-dark">
+        <div class="stat-label stat-label-light">Jarak Tempuh</div>
+        <div style="display:flex; align-items:flex-end; justify-content:center;">
+          <span id="distVal" class="stat-value stat-value-light">0.00</span>
+          <span class="stat-unit stat-unit-light">km</span>
+        </div>
       </div>
     </div>
 
-    <!-- Bottom Panel (Stats & Controls) -->
-    <div class="absolute bottom-0 left-0 right-0 z-10 glass-panel rounded-t-[32px] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-2 gap-4 mb-6">
-        <div class="bg-slate-50/80 border border-slate-100 rounded-2xl p-4 text-center">
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Kecepatan</p>
-          <div class="flex items-end justify-center">
-            <span id="speedVal" class="text-3xl font-black text-slate-900">0.0</span>
-            <span class="text-xs font-bold text-slate-500 ml-1 mb-1">km/jam</span>
-          </div>
-        </div>
-        <div class="bg-slate-900 rounded-2xl p-4 text-center shadow-lg">
-          <p class="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Jarak Tempuh</p>
-          <div class="flex items-end justify-center">
-            <span id="distVal" class="text-3xl font-black text-white">0.00</span>
-            <span class="text-xs font-bold text-slate-400 ml-1 mb-1">km</span>
-          </div>
-        </div>
+    <div class="action-row">
+      <div class="duration-box">
+        <span id="timeVal" class="duration-val">00:00</span>
+        <span class="duration-label">Durasi</span>
       </div>
-
-      <!-- Duration & Action Button -->
-      <div class="flex items-center space-x-4">
-        <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl p-3 w-20 h-16">
-          <span id="timeVal" class="text-base font-black text-slate-800 tabular-nums">00:00</span>
-          <span class="text-[9px] font-bold text-slate-500 uppercase">Durasi</span>
-        </div>
-        
-        <button id="trackBtn" class="flex-1 h-16 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center space-x-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <span>Mulai Perjalanan</span>
-        </button>
-      </div>
-
+      <button id="trackBtn" class="track-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Mulai Perjalanan</span>
+      </button>
     </div>
   </div>
 
@@ -146,11 +149,13 @@
       
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Selesai Perjalanan</span>`;
-      btn.classList.remove('from-amber-500', 'to-amber-600'); btn.classList.add('from-rose-500', 'to-rose-600');
-      document.getElementById('statusText').innerText = "Sedang melacak..."; document.getElementById('statusText').classList.add('text-emerald-600');
-      document.getElementById('speedVal').innerText = "0.0"; document.getElementById('distVal').innerText = "0.00";
+      btn.classList.add('stop');
+      
+      document.getElementById('statusText').innerText = "Sedang melacak...";
+      document.getElementById('statusText').style.color = "#059669";
+      document.getElementById('speedVal').innerText = "0.0";
+      document.getElementById('distVal').innerText = "0.00";
 
-      // Ikon Motor Matic Tajam & Animasi Getar
       const bikeIcon = L.divIcon({
         className: 'bike-moving-icon',
         html: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
@@ -186,8 +191,9 @@
       clearInterval(timerInterval);
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Mulai Perjalanan</span>`;
-      btn.classList.add('from-amber-500', 'to-amber-600'); btn.classList.remove('from-rose-500', 'to-rose-600');
-      document.getElementById('statusText').innerText = "Perjalanan dihentikan"; document.getElementById('statusText').classList.remove('text-emerald-600');
+      btn.classList.remove('stop');
+      document.getElementById('statusText').innerText = "Perjalanan dihentikan";
+      document.getElementById('statusText').style.color = "#64748b";
       document.getElementById('speedVal').innerText = "0.0";
     }
 
@@ -206,17 +212,23 @@
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
     }
 
-    function onError(err) { document.getElementById('statusText').innerText = "Gagal mendapatkan GPS"; }
+    function onError(err) { 
+      document.getElementById('statusText').innerText = "Gagal mendapatkan sinyal GPS"; 
+      document.getElementById('statusText').style.color = "#ef4444";
+    }
+    
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
+    
     function updateTimer() {
       if (!startTime) return;
       const e = Math.floor((Date.now() - startTime) / 1000);
       document.getElementById('timeVal').innerText = `${String(Math.floor(e / 60)).padStart(2, '0')}:${String(e % 60).padStart(2, '0')}`;
     }
+    
     window.onload = initMap;
   </script>
 </body>
