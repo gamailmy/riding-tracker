@@ -60,7 +60,7 @@
     /* Ikon Motor & Animasi */
     .bike-wrapper { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
     
-    /* Efek Pulse (Denyut) Biru Mencolok ala Radar */
+    /* Efek Pulse (Denyut) Biru Mencolok */
     .pulse-core { 
       position: absolute; top: 50%; left: 50%; 
       transform: translate(-50%, -50%); 
@@ -159,6 +159,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   
   <script>
+    // PENANDA UPDATE: Jika ini muncul di Console browser, berarti file baru sudah termuat.
+    console.log("OAC Riding Tracker Script v5 - Modern Red Matic");
+
     const firebaseConfig = {
       apiKey: "AIzaSyC_Lp9IMTfC0D1pSFeDbjW2ugyg22tFfTc",
       authDomain: "oneaspalclub.firebaseapp.com",
@@ -180,10 +183,10 @@
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
 
-    // Ikon Motor Matic Merah Modern Tanpa ID (Anti Bentrok)
+    // Ikon Motor Matic Merah Modern
     function getBikeIconHTML(isSelf = true) {
       const coreClass = isSelf ? '' : 'pulse-other';
-      const bodyColor1 = isSelf ? '#dc2626' : '#3b82f6'; // Merah untuk diri sendiri, Biru untuk orang lain
+      const bodyColor1 = isSelf ? '#dc2626' : '#3b82f6'; 
       const bodyColor2 = isSelf ? '#991b1b' : '#1d4ed8';
       const wheelStroke = isSelf ? '#ef4444' : '#60a5fa';
       
@@ -193,43 +196,24 @@
           <div class="pulse-core ${coreClass}"></div>
           <div class="bike-rotator">
             <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 64 64" fill="none">
-              <!-- Bayangan -->
               <ellipse cx="32" cy="54" rx="20" ry="3" fill="rgba(0,0,0,0.35)"/>
               <path d="M12 54 H52" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.8"/>
-              
-              <!-- Roda Belakang & Cakram -->
               <circle cx="14" cy="42" r="8" fill="#1e293b" stroke="${wheelStroke}" stroke-width="1.5"/>
               <circle cx="14" cy="42" r="4" fill="#475569"/>
               <circle cx="14" cy="42" r="1.5" fill="#0f172a"/>
               <path d="M14 36 V48 M8 42 H20" stroke="#94a3b8" stroke-width="1.5"/>
-              
-              <!-- Roda Depan & Cakram -->
               <circle cx="50" cy="42" r="8" fill="#1e293b" stroke="${wheelStroke}" stroke-width="1.5"/>
               <circle cx="50" cy="42" r="4" fill="#475569"/>
               <circle cx="50" cy="42" r="1.5" fill="#0f172a"/>
               <path d="M50 36 V48 M44 42 H56" stroke="#94a3b8" stroke-width="1.5"/>
-              
-              <!-- Bodi Utama (Matic Merah Modern Tajam) -->
               <path d="M14 42 C14 34, 18 30, 26 29 L40 28 C45 27.5, 48 30, 48 36 L48 42" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              
-              <!-- Jok -->
               <path d="M20 32 C24 28, 30 27, 34 29 L32 34 H20Z" fill="#0f172a" stroke="#ffffff" stroke-width="1.5"/>
-              
-              <!-- Fairing Depan Tajam -->
               <path d="M40 28 L45 20 H51 C53 20, 54 22, 52.5 24 L48 33" fill="${bodyColor2}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              
-              <!-- Windshield (Kaca) -->
               <path d="M45 20 L48 14 H51 C53 14, 53.5 16, 52 18 L45 20Z" fill="#e0f2fe" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              
-              <!-- Lampu Depan Tajam -->
               <path d="M50 26 C52 26, 53 28, 51.5 30 L48 30 Z" fill="#fef08a" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              
-              <!-- Setang & Cermin -->
               <path d="M48 20 L46 12 M51 12 H41" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
               <circle cx="51" cy="12" r="2" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1"/>
               <circle cx="41" cy="12" r="2" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1"/>
-              
-              <!-- Knalpot -->
               <path d="M14 44 L9 46" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
             </svg>
           </div>
@@ -314,6 +298,8 @@
             map.flyTo({ center: [initPos.lng, initPos.lat], zoom: 17, essential: true });
             
             userMarkerEl = document.createElement('div');
+            userMarkerEl.style.width = '56px';
+            userMarkerEl.style.height = '56px';
             userMarkerEl.innerHTML = getBikeIconHTML(true);
             userMarker = new maplibregl.Marker(userMarkerEl, { anchor: 'center' }).setLngLat([initPos.lng, initPos.lat]).addTo(map);
             
@@ -330,6 +316,8 @@
           if (!data) return;
           
           const el = document.createElement('div');
+          el.style.width = '56px';
+          el.style.height = '56px';
           el.innerHTML = getBikeIconHTML(false);
           const marker = new maplibregl.Marker(el, { anchor: 'center' }).setLngLat([data.lng, data.lat]).addTo(map);
           
