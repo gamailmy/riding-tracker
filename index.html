@@ -7,51 +7,87 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; overflow: hidden; }
     
     #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #e5e7eb; z-index: 0; }
     .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
 
-    /* UI Overlay */
-    .ui-overlay { position: absolute; left: 0; right: 0; z-index: 10; pointer-events: none; }
+    /* UI Overlay Base */
+    .ui-overlay { position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; width: calc(100% - 24px); max-width: 400px; pointer-events: none; }
     .ui-overlay > * { pointer-events: auto; }
 
-    .header-container { top: 0; padding: 16px; padding-top: calc(env(safe-area-inset-top) + 16px); }
-    .header-box {
-      background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.6); border-radius: 16px; padding: 12px 16px;
-      display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    /* IOS Glass Effect */
+    .ios-glass {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .logo-circle { width: 36px; height: 36px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .header-title { font-size: 14px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.2; }
-    .header-status { font-size: 10px; font-weight: 700; color: #64748b; }
-    .header-btn { background: #f1f5f9; border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Header Slim */
+    .header-container { top: calc(env(safe-area-inset-top) + 12px); }
+    .header-box {
+      border-radius: 24px; padding: 10px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .logo-circle { width: 32px; height: 32px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
+    .header-title { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; }
+    .header-status { font-size: 9px; font-weight: 700; color: #64748b; margin-top: 2px; }
+    .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
     .header-btn:active { transform: scale(0.9); }
 
-    .bottom-container { bottom: 0; padding: 24px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px); background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.6); border-top-left-radius: 32px; border-top-right-radius: 32px; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+    /* Bottom Panel Compact */
+    .bottom-container { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+    .bottom-box { border-radius: 28px; padding: 12px; }
 
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-    .stat-card-light { background: rgba(248, 250, 252, 0.8); border: 1px solid #f1f5f9; border-radius: 16px; padding: 16px; text-align: center; }
-    .stat-card-dark { background: #0f172a; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    .stat-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+    .stats-row { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .stat-card { border-radius: 18px; padding: 8px 4px; text-align: center; }
+    .stat-light { background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255,255,255,0.5); }
+    .stat-dark { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    
+    .stat-label { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
     .stat-label-light { color: #fbbf24; }
-    .stat-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1; }
+    
+    .stat-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 2px; }
+    .stat-value { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; font-variant-numeric: tabular-nums; }
     .stat-value-light { color: #ffffff; }
-    .stat-unit { font-size: 12px; font-weight: 700; color: #64748b; margin-left: 4px; }
+    .stat-unit { font-size: 9px; font-weight: 700; color: #64748b; }
     .stat-unit-light { color: #94a3b8; }
 
-    .action-row { display: flex; align-items: center; gap: 16px; }
-    .duration-box { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; width: 80px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
-    .duration-val { font-size: 16px; font-weight: 800; color: #1e293b; font-variant-numeric: tabular-nums; }
-    .duration-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    /* Tombol Mulai */
+    .track-btn { 
+      width: 100%; height: 52px; border: none; border-radius: 18px; 
+      font-size: 15px; font-weight: 800; color: white; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center; gap: 8px; 
+      transition: all 0.2s; background: linear-gradient(135deg, #f59e0b, #d97706); 
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35); 
+    }
+    .track-btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35); }
+    .track-btn.stop { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); }
 
-    .track-btn { flex: 1; height: 64px; border: none; border-radius: 16px; font-size: 16px; font-weight: 900; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); background: linear-gradient(to right, #f59e0b, #d97706); }
-    .track-btn:active { transform: scale(0.97); }
-    .track-btn.stop { background: linear-gradient(to right, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+    /* Ikon Motor & Animasi */
+    .bike-wrapper { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    
+    /* Bundaran Transparan Berkedip Biru */
+    .pulse-circle {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(37, 99, 235, 0.5);
+      border: 2px solid rgba(37, 99, 235, 0.8);
+      animation: pulseBlink 2s infinite ease-in-out;
+      z-index: -1;
+    }
+    @keyframes pulseBlink {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
+      50% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+    }
 
-    /* Animasi Getaran Motor Matic */
+    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; }
+
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
       25% { transform: translate(-0.3px, -0.5px) rotate(-0.8deg); }
@@ -59,54 +95,57 @@
       75% { transform: translate(-0.3px, 0.5px) rotate(-0.5deg); }
       100% { transform: translate(0.3px, -0.5px) rotate(0.8deg); }
     }
-    .bike-moving-icon svg { animation: bikeRumble 0.15s infinite linear; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5)); }
+    .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.15s infinite linear; }
+    .bike-rotator svg { filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5)); }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Header -->
+  <!-- Header Floating -->
   <div class="ui-overlay header-container">
-    <div class="header-box">
+    <div class="header-box ios-glass">
       <div class="header-left">
         <div class="logo-circle">🏍️</div>
         <div>
           <h1 class="header-title">RIDING TRACKER</h1>
-          <p id="statusText" class="header-status">Siap memulai perjalanan</p>
+          <p id="statusText" class="header-status">Memuat lokasi...</p>
         </div>
       </div>
       <button id="centerBtn" class="header-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
   </div>
 
-  <!-- Bottom Panel -->
+  <!-- Bottom Panel Compact -->
   <div class="ui-overlay bottom-container">
-    <div class="stats-grid">
-      <div class="stat-card-light">
-        <div class="stat-label">Kecepatan</div>
-        <div style="display:flex; align-items:flex-end; justify-content:center;">
-          <span id="speedVal" class="stat-value">0.0</span>
-          <span class="stat-unit">km/jam</span>
+    <div class="bottom-box ios-glass">
+      <div class="stats-row">
+        <div class="stat-card stat-light">
+          <div class="stat-label">Kecepatan</div>
+          <div class="stat-value-wrap">
+            <span id="speedVal" class="stat-value">0.0</span>
+            <span class="stat-unit">km/j</span>
+          </div>
+        </div>
+        <div class="stat-card stat-dark">
+          <div class="stat-label stat-label-light">Jarak</div>
+          <div class="stat-value-wrap">
+            <span id="distVal" class="stat-value stat-value-light">0.00</span>
+            <span class="stat-unit stat-unit-light">km</span>
+          </div>
+        </div>
+        <div class="stat-card stat-light">
+          <div class="stat-label">Durasi</div>
+          <div class="stat-value-wrap">
+            <span id="timeVal" class="stat-value" style="font-size: 18px;">00:00</span>
+          </div>
         </div>
       </div>
-      <div class="stat-card-dark">
-        <div class="stat-label stat-label-light">Jarak Tempuh</div>
-        <div style="display:flex; align-items:flex-end; justify-content:center;">
-          <span id="distVal" class="stat-value stat-value-light">0.00</span>
-          <span class="stat-unit stat-unit-light">km</span>
-        </div>
-      </div>
-    </div>
 
-    <div class="action-row">
-      <div class="duration-box">
-        <span id="timeVal" class="duration-val">00:00</span>
-        <span class="duration-label">Durasi</span>
-      </div>
       <button id="trackBtn" class="track-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         <span>Mulai Perjalanan</span>
       </button>
     </div>
@@ -117,7 +156,73 @@
     let map, userMarker, polyline;
     let isTracking = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
 
-    const URL_GEOJSON_ROUTE = "https://gist.githubusercontent.com/gamailmy/a5ab1891f23201f428781b6f0a806bc9/raw/0c6bd3a839d7e123e21cc4e754e4091ac052caec/rute-oneaspal.geojson"; 
+    const URL_GEOJSON_ROUTE = ""; 
+
+    function getBikeIconHTML() {
+      return `
+        <div class="bike-wrapper">
+          <div class="pulse-circle"></div>
+          <div class="bike-rotator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
+              <!-- Bayangan -->
+              <ellipse cx="32" cy="52" rx="18" ry="3" fill="rgba(0,0,0,0.3)"/>
+              <path d="M14 52 H50" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.7"/>
+              
+              <!-- Roda Belakang & Cakram -->
+              <circle cx="16" cy="44" r="8" fill="#0f172a" stroke="#dc2626" stroke-width="1.5"/>
+              <circle cx="16" cy="44" r="4.5" fill="#334155"/>
+              <circle cx="16" cy="44" r="1.5" fill="#0f172a"/>
+              <path d="M16 39.5 V48.5 M11.5 44 H20.5" stroke="#dc2626" stroke-width="1.5" opacity="0.8"/>
+              
+              <!-- Roda Depan & Cakram -->
+              <circle cx="48" cy="44" r="8" fill="#0f172a" stroke="#dc2626" stroke-width="1.5"/>
+              <circle cx="48" cy="44" r="4.5" fill="#334155"/>
+              <circle cx="48" cy="44" r="1.5" fill="#0f172a"/>
+              <path d="M48 39.5 V48.5 M43.5 44 H52.5" stroke="#dc2626" stroke-width="1.5" opacity="0.8"/>
+              
+              <!-- Bodi Motor Matic Merah (Tajam & Melengkung) -->
+              <path d="M16 44 C16 36, 20 32, 28 31 L40 30 C45 29.5, 48 32, 48 38 L48 44" fill="url(#redGrad)" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              
+              <!-- Jok -->
+              <path d="M22 34 C26 30, 32 29, 36 31 L34 35 H22Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
+              
+              <!-- Fairing Depan (Tajam) -->
+              <path d="M40 30 L45 22 H51 C53 22, 54 24, 52.5 26 L48 35" fill="url(#redGrad)" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              
+              <!-- Windshield (Kaca Pelindung) -->
+              <path d="M45 22 L48 16 H51 C53 16, 53.5 18, 52 20 L45 22Z" fill="#bae6fd" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
+              
+              <!-- Lampu Depan -->
+              <path d="M50 28 C52 28, 53 30, 51.5 32 L48 32 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
+              
+              <!-- Setang & Cermin -->
+              <path d="M48 22 L46 14 M51 14 H41" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="51" cy="14" r="2" fill="#dc2626" stroke="#ffffff" stroke-width="1"/>
+              <circle cx="41" cy="14" r="2" fill="#dc2626" stroke="#ffffff" stroke-width="1"/>
+              
+              <!-- Knalpot -->
+              <path d="M16 46 L11 48" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+              
+              <!-- Definisi Gradasi Merah -->
+              <defs>
+                <linearGradient id="redGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ef4444"/>
+                  <stop offset="100%" stop-color="#b91c1c"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      `;
+    }
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+      let brng = Math.atan2(y, x) * 180 / Math.PI;
+      return (brng + 360) % 360;
+    }
 
     function initMap() {
       map = L.map('map', { zoomControl: false }).setView([-6.2088, 106.8456], 13);
@@ -137,6 +242,25 @@
           navigator.geolocation.getCurrentPosition((pos) => { map.panTo([pos.coords.latitude, pos.coords.longitude]); });
         }
       });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const initPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          map.setView([initPos.lat, initPos.lng], 16);
+          
+          const bikeIcon = L.divIcon({
+            className: 'bike-static-icon',
+            html: getBikeIconHTML(),
+            iconSize: [48, 48],
+            iconAnchor: [24, 24]
+          });
+          
+          userMarker = L.marker([initPos.lat, initPos.lng], { icon: bikeIcon }).addTo(map);
+          document.getElementById('statusText').innerText = "Siap memulai perjalanan";
+        }, (err) => {
+          document.getElementById('statusText').innerText = "Izinkan akses lokasi";
+        }, { enableHighAccuracy: true });
+      }
     }
 
     document.getElementById('trackBtn').addEventListener('click', toggleTracking);
@@ -148,7 +272,7 @@
       isTracking = true; pathCoordinates = []; totalDistance = 0; lastCoord = null; startTime = Date.now(); polyline.setLatLngs([]);
       
       const btn = document.getElementById('trackBtn');
-      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Selesai Perjalanan</span>`;
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Selesai Perjalanan</span>`;
       btn.classList.add('stop');
       
       document.getElementById('statusText').innerText = "Sedang melacak...";
@@ -156,31 +280,16 @@
       document.getElementById('speedVal').innerText = "0.0";
       document.getElementById('distVal').innerText = "0.00";
 
-      const bikeIcon = L.divIcon({
-        className: 'bike-moving-icon',
-        html: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
-          <ellipse cx="32" cy="52" rx="18" ry="3" fill="rgba(0,0,0,0.3)"/>
-          <path d="M14 52 H50" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.7"/>
-          <circle cx="16" cy="44" r="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
-          <circle cx="16" cy="44" r="4" fill="#334155"/>
-          <path d="M16 40 V48 M12 44 H20" stroke="#f59e0b" stroke-width="1.5"/>
-          <circle cx="48" cy="44" r="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
-          <circle cx="48" cy="44" r="4" fill="#334155"/>
-          <path d="M48 40 V48 M44 44 H52" stroke="#f59e0b" stroke-width="1.5"/>
-          <path d="M16 44 C16 35, 22 30, 30 28 L40 26 C46 25, 50 32, 48 40 L48 44" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M30 28 L35 20 H42 C44 20, 45 22, 44 24 L40 26" fill="#fbbf24" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M44 30 C46 30, 48 32, 48 35 L44 35 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1"/>
-          <path d="M40 26 L38 18 M42 18 H34" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="42" cy="18" r="2" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
-          <circle cx="34" cy="18" r="2" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
-          <path d="M22 32 C25 28, 30 27, 34 29 L32 33 H22Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>`,
-        iconSize: [48, 48],
-        iconAnchor: [24, 42]
-      });
+      if (userMarker) {
+        const movingIcon = L.divIcon({
+          className: 'bike-moving-icon',
+          html: getBikeIconHTML(),
+          iconSize: [48, 48],
+          iconAnchor: [24, 24]
+        });
+        userMarker.setIcon(movingIcon);
+      }
 
-      if (userMarker) map.removeLayer(userMarker);
-      userMarker = L.marker([-6.2088, 106.8456], { icon: bikeIcon }).addTo(map);
       timerInterval = setInterval(updateTimer, 1000);
       watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
     }
@@ -190,22 +299,48 @@
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       clearInterval(timerInterval);
       const btn = document.getElementById('trackBtn');
-      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Mulai Perjalanan</span>`;
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Mulai Perjalanan</span>`;
       btn.classList.remove('stop');
       document.getElementById('statusText').innerText = "Perjalanan dihentikan";
       document.getElementById('statusText').style.color = "#64748b";
       document.getElementById('speedVal').innerText = "0.0";
+
+      if (userMarker) {
+        const staticIcon = L.divIcon({
+          className: 'bike-static-icon',
+          html: getBikeIconHTML(),
+          iconSize: [48, 48],
+          iconAnchor: [24, 24]
+        });
+        userMarker.setIcon(staticIcon);
+      }
     }
 
     function onSuccess(position) {
       const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-      if (userMarker) userMarker.setLatLng([pos.lat, pos.lng]);
+      
+      if (userMarker) {
+        userMarker.setLatLng([pos.lat, pos.lng]);
+        
+        if (lastCoord) {
+          const dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+          if (dist > 0.005) {
+            const bearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+            const el = userMarker.getElement();
+            if (el) {
+              const rotator = el.querySelector('.bike-rotator');
+              if (rotator) {
+                rotator.style.transform = `rotate(${bearing - 90}deg)`;
+              }
+            }
+            totalDistance += dist;
+          }
+        }
+      }
+
       map.panTo([pos.lat, pos.lng]);
       pathCoordinates.push([pos.lat, pos.lng]); polyline.setLatLngs(pathCoordinates);
-      if (lastCoord) {
-        const dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
-        if (dist > 0.002) { totalDistance += dist; }
-      }
+      
       lastCoord = pos;
       let speed = position.coords.speed ? position.coords.speed * 3.6 : 0;
       document.getElementById('speedVal').innerText = speed.toFixed(1);
