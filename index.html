@@ -59,31 +59,47 @@
     .track-btn.stop { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); }
 
     /* Ikon Motor & Animasi */
-    .bike-wrapper { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
-    .pulse-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); width: 52px; height: 52px; border-radius: 50%; animation: pulseBlink 2s infinite ease-in-out; z-index: -1; }
-    .pulse-self { background: rgba(37, 99, 235, 0.5); border: 2px solid rgba(37, 99, 235, 0.8); }
-    .pulse-other { background: rgba(239, 68, 68, 0.4); border: 2px solid rgba(239, 68, 68, 0.7); }
+    .bike-wrapper { position: relative; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; }
+    
+    /* Efek Pulse (Denyut) Biru Mencolok */
+    .pulse-circle { 
+      position: absolute; top: 50%; left: 50%; 
+      transform: translate(-50%, -50%) scale(0.8); 
+      width: 60px; height: 60px; border-radius: 50%; 
+      animation: pulseBlink 2s infinite ease-in-out; 
+      z-index: -1; 
+    }
+    .pulse-self { 
+      background: rgba(59, 130, 246, 0.6); /* Biru cerah */ 
+      border: 2px solid rgba(37, 99, 235, 0.9); /* Tepi biru pekat tajam */ 
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.5); 
+    }
+    .pulse-other { 
+      background: rgba(239, 68, 68, 0.4); 
+      border: 2px solid rgba(239, 68, 68, 0.7); 
+    }
     
     @keyframes pulseBlink {
-      0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
-      50% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+      0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
     .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; }
 
+    /* Animasi Getaran Halus Matic */
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
-      25% { transform: translate(-0.3px, -0.5px) rotate(-0.8deg); }
-      50% { transform: translate(0.3px, 0) rotate(0.5deg); }
-      75% { transform: translate(-0.3px, 0.5px) rotate(-0.5deg); }
-      100% { transform: translate(0.3px, -0.5px) rotate(0.8deg); }
+      25% { transform: translate(-0.2px, -0.4px) rotate(-0.6deg); }
+      50% { transform: translate(0.2px, 0) rotate(0.4deg); }
+      75% { transform: translate(-0.2px, 0.4px) rotate(-0.4deg); }
+      100% { transform: translate(0.2px, -0.4px) rotate(0.6deg); }
     }
-    .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.15s infinite linear; }
-    .bike-rotator svg { filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5)); }
+    .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.2s infinite linear; }
+    .bike-rotator svg { filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6)); }
 
     /* Tooltip Nama Anggota */
     .rider-name-tooltip {
-      background: rgba(255, 255, 255, 0.9) !important;
+      background: rgba(255, 255, 255, 0.95) !important;
       border: 1px solid #cbd5e1 !important;
       border-radius: 12px !important;
       padding: 3px 10px !important;
@@ -169,7 +185,7 @@
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
 
-    // Fungsi pembuat HTML Ikon Motor
+    // Fungsi pembuat HTML Ikon Motor Matic Merah Modern
     function getBikeIconHTML(isSelf = true) {
       const pulseClass = isSelf ? 'pulse-self' : 'pulse-other';
       const bodyColor1 = isSelf ? '#ef4444' : '#3b82f6';
@@ -181,24 +197,47 @@
         <div class="bike-wrapper ${isTracking && isSelf ? 'bike-moving-icon' : ''}">
           <div class="pulse-circle ${pulseClass}"></div>
           <div class="bike-rotator">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" fill="none">
-              <ellipse cx="32" cy="52" rx="18" ry="3" fill="rgba(0,0,0,0.3)"/>
-              <path d="M14 52 H50" stroke="${wheelStroke}" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.7"/>
-              <circle cx="16" cy="44" r="8" fill="#0f172a" stroke="${wheelStroke}" stroke-width="1.5"/>
-              <circle cx="16" cy="44" r="4.5" fill="#334155"/>
-              <path d="M16 39.5 V48.5 M11.5 44 H20.5" stroke="${wheelStroke}" stroke-width="1.5" opacity="0.8"/>
-              <circle cx="48" cy="44" r="8" fill="#0f172a" stroke="${wheelStroke}" stroke-width="1.5"/>
-              <circle cx="48" cy="44" r="4.5" fill="#334155"/>
-              <path d="M48 39.5 V48.5 M43.5 44 H52.5" stroke="${wheelStroke}" stroke-width="1.5" opacity="0.8"/>
-              <path d="M16 44 C16 36, 20 32, 28 31 L40 30 C45 29.5, 48 32, 48 38 L48 44" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M22 34 C26 30, 32 29, 36 31 L34 35 H22Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
-              <path d="M40 30 L45 22 H51 C53 22, 54 24, 52.5 26 L48 35" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M45 22 L48 16 H51 C53 16, 53.5 18, 52 20 L45 22Z" fill="#bae6fd" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              <path d="M50 28 C52 28, 53 30, 51.5 32 L48 32 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              <path d="M48 22 L46 14 M51 14 H41" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="51" cy="14" r="2" fill="${wheelStroke}" stroke="#ffffff" stroke-width="1"/>
-              <circle cx="41" cy="14" r="2" fill="${wheelStroke}" stroke="#ffffff" stroke-width="1"/>
-              <path d="M16 46 L11 48" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 64 64" fill="none">
+              <!-- Bayangan -->
+              <ellipse cx="32" cy="54" rx="20" ry="3" fill="rgba(0,0,0,0.3)"/>
+              <path d="M12 54 H52" stroke="${wheelStroke}" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.8"/>
+              
+              <!-- Roda Belakang & Cakram -->
+              <circle cx="14" cy="44" r="9" fill="#0f172a" stroke="${wheelStroke}" stroke-width="2"/>
+              <circle cx="14" cy="44" r="5" fill="#334155"/>
+              <circle cx="14" cy="44" r="1.5" fill="#0f172a"/>
+              <path d="M14 37 V51 M7 44 H21" stroke="${wheelStroke}" stroke-width="1.5" opacity="0.9"/>
+              
+              <!-- Roda Depan & Cakram -->
+              <circle cx="50" cy="44" r="9" fill="#0f172a" stroke="${wheelStroke}" stroke-width="2"/>
+              <circle cx="50" cy="44" r="5" fill="#334155"/>
+              <circle cx="50" cy="44" r="1.5" fill="#0f172a"/>
+              <path d="M50 37 V51 M43 44 H57" stroke="${wheelStroke}" stroke-width="1.5" opacity="0.9"/>
+              
+              <!-- Bodi Motor Matic Merah Modern (Tajam & Melengkung) -->
+              <!-- Bodi Utama -->
+              <path d="M14 44 C14 35, 19 31, 28 30 L42 29 C47 28.5, 50 32, 50 38 L50 44" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              
+              <!-- Jok -->
+              <path d="M20 33 C24 29, 31 28, 35 30 L33 35 H20Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
+              
+              <!-- Fairing Depan Tajam -->
+              <path d="M42 29 L47 21 H53 C55 21, 56 23, 54.5 25 L50 34" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              
+              <!-- Windshield (Kaca Pelindung) -->
+              <path d="M47 21 L50 15 H53 C55 15, 55.5 17, 54 19 L47 21Z" fill="#e0f2fe" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
+              
+              <!-- Lampu Depan Tajam -->
+              <path d="M52 27 C54 27, 55 29, 53.5 31 L50 31 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
+              
+              <!-- Setang & Cermin -->
+              <path d="M50 21 L48 13 M53 13 H43" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="53" cy="13" r="2" fill="${wheelStroke}" stroke="#ffffff" stroke-width="1"/>
+              <circle cx="43" cy="13" r="2" fill="${wheelStroke}" stroke="#ffffff" stroke-width="1"/>
+              
+              <!-- Knalpot -->
+              <path d="M14 46 L9 48" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+              
               <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${bodyColor1}"/><stop offset="100%" stop-color="${bodyColor2}"/></linearGradient></defs>
             </svg>
           </div>
