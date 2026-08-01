@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>One Aspal Club - Riding Tracker 3D</title>
-  <!-- MapLibre GL JS (Mesin Peta 3D Gratis) -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +12,7 @@
     html, body { height: 100%; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; overflow: hidden; }
     
     #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    .maplibregl-ctrl-bottom-right { display: none; } /* Sembunyikan logo agar bersih */
+    .maplibregl-ctrl-bottom-right { display: none; }
 
     .ui-overlay { position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; width: calc(100% - 24px); max-width: 400px; pointer-events: none; }
     .ui-overlay > * { pointer-events: auto; }
@@ -67,7 +66,7 @@
       transform: translate(-50%, -50%) scale(0.8); 
       width: 60px; height: 60px; border-radius: 50%; 
       animation: pulseBlink 2s infinite ease-in-out; 
-      z-index: -1; 
+      z-index: 0; /* Fix z-index agar tidak hilang di belakang peta */
     }
     .pulse-self { 
       background: rgba(59, 130, 246, 0.6); /* Biru cerah */ 
@@ -84,9 +83,8 @@
       50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
-    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; }
+    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; position: relative; z-index: 1; }
 
-    /* Animasi Getaran Halus Matic */
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
       25% { transform: translate(-0.2px, -0.4px) rotate(-0.6deg); }
@@ -97,7 +95,6 @@
     .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.2s infinite linear; }
     .bike-rotator svg { filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6)); }
 
-    /* Tooltip Nama Anggota */
     .rider-name-tooltip {
       background: rgba(255, 255, 255, 0.95) !important;
       border: 1px solid #cbd5e1 !important;
@@ -157,12 +154,10 @@
     </div>
   </div>
 
-  <!-- Firebase & MapLibre JS -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   
   <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyC_Lp9IMTfC0D1pSFeDbjW2ugyg22tFfTc",
       authDomain: "oneaspalclub.firebaseapp.com",
@@ -175,7 +170,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Ambil ID dan Nama dari URL iframe
     const urlParams = new URLSearchParams(window.location.search);
     const myUid = urlParams.get('uid') || 'guest_' + Math.random().toString(36).substr(2, 9);
     const myName = urlParams.get('name') || 'Rider';
@@ -185,13 +179,12 @@
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
 
-    // Fungsi pembuat HTML Ikon Motor Matic Merah Modern
+    // Hapus penggunaan ID gradient (linearGradient) agar tidak bentrok saat ada banyak marker di layar
     function getBikeIconHTML(isSelf = true) {
       const pulseClass = isSelf ? 'pulse-self' : 'pulse-other';
       const bodyColor1 = isSelf ? '#ef4444' : '#3b82f6';
       const bodyColor2 = isSelf ? '#b91c1c' : '#1d4ed8';
       const wheelStroke = isSelf ? '#dc2626' : '#3b82f6';
-      const gradId = isSelf ? 'grad_r' : 'grad_b';
       
       return `
         <div class="bike-wrapper ${isTracking && isSelf ? 'bike-moving-icon' : ''}">
@@ -214,20 +207,19 @@
               <circle cx="50" cy="44" r="1.5" fill="#0f172a"/>
               <path d="M50 37 V51 M43 44 H57" stroke="${wheelStroke}" stroke-width="1.5" opacity="0.9"/>
               
-              <!-- Bodi Motor Matic Merah Modern (Tajam & Melengkung) -->
-              <!-- Bodi Utama -->
-              <path d="M14 44 C14 35, 19 31, 28 30 L42 29 C47 28.5, 50 32, 50 38 L50 44" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              <!-- Bodi Utama (Matic Merah Modern) -->
+              <path d="M14 44 C14 35, 19 31, 28 30 L42 29 C47 28.5, 50 32, 50 38 L50 44" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
               
               <!-- Jok -->
               <path d="M20 33 C24 29, 31 28, 35 30 L33 35 H20Z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5"/>
               
               <!-- Fairing Depan Tajam -->
-              <path d="M42 29 L47 21 H53 C55 21, 56 23, 54.5 25 L50 34" fill="url(#${gradId})" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M42 29 L47 21 H53 C55 21, 56 23, 54.5 25 L50 34" fill="${bodyColor2}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
               
-              <!-- Windshield (Kaca Pelindung) -->
+              <!-- Windshield -->
               <path d="M47 21 L50 15 H53 C55 15, 55.5 17, 54 19 L47 21Z" fill="#e0f2fe" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
               
-              <!-- Lampu Depan Tajam -->
+              <!-- Lampu Depan -->
               <path d="M52 27 C54 27, 55 29, 53.5 31 L50 31 Z" fill="#fef3c7" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
               
               <!-- Setang & Cermin -->
@@ -237,8 +229,6 @@
               
               <!-- Knalpot -->
               <path d="M14 46 L9 48" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
-              
-              <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${bodyColor1}"/><stop offset="100%" stop-color="${bodyColor2}"/></linearGradient></defs>
             </svg>
           </div>
         </div>
@@ -256,17 +246,16 @@
     function initMap() {
       map = new maplibregl.Map({
         container: 'map',
-        style: 'https://tiles.openfreemap.org/styles/liberty', // Style vektor 3D gratis
-        center: [106.8456, -6.2088], // [lng, lat] untuk MapLibre
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [106.8456, -6.2088],
         zoom: 15,
-        pitch: 0, // 2D awalnya
+        pitch: 0,
         bearing: 0
       });
 
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
       map.on('load', () => {
-        // Tambahkan Layer Bangunan 3D
         const layers = map.getStyle().layers;
         let labelLayerId;
         for (let i = 0; i < layers.length; i++) {
@@ -291,10 +280,8 @@
             }
         }, labelLayerId);
 
-        // Sembunyikan 3D di awal
         map.setLayoutProperty('3d-buildings', 'visibility', 'none');
 
-        // Buat garis rute (Polyline)
         map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
         map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.8 } });
 
@@ -304,7 +291,6 @@
           }
         });
 
-        // Tombol Toggle 3D
         document.getElementById('btn3D').addEventListener('click', () => {
           is3D = !is3D;
           const btn3D = document.getElementById('btn3D');
@@ -320,7 +306,6 @@
           }
         });
 
-        // Tampilkan ikon motor saat pertama kali halaman dibuka
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
             const initPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -336,7 +321,6 @@
           }, { enableHighAccuracy: true });
         }
 
-        // === Firebase: Dengarkan pergerakan pengguna lain ===
         const activeRidersRef = db.ref('activeRiders');
         activeRidersRef.on('child_added', (snap) => {
           if (snap.key === myUid) return; 
@@ -419,7 +403,6 @@
 
       if (userMarkerEl) {
         userMarkerEl.innerHTML = getBikeIconHTML(true);
-        // Reset rotasi map jika dihentikan
         if (is3D) map.easeTo({ bearing: 0, pitch: 60, duration: 500 });
         else map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
       }
@@ -445,11 +428,9 @@
         }
       }
 
-      // Update garis rute di MapLibre
       pathCoordinates.push([pos.lng, pos.lat]); 
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoordinates } });
       
-      // Jika 3D aktif & sedang tracking, peta berputar mengikuti arah jalan (seperti Google Maps)
       if (is3D) {
         map.easeTo({ center: [pos.lng, pos.lat], bearing: bearing, pitch: 60, zoom: 17, duration: 1000 });
       } else {
