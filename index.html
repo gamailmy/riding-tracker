@@ -35,6 +35,7 @@
     .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
     .header-btn:active { transform: scale(0.9); }
     .btn-3d-active { background: #0f172a; color: white; }
+    .btn-gas-active { background: #10b981; color: white; }
 
     .bottom-container { bottom: calc(env(safe-area-inset-bottom) + 12px); }
     .bottom-box { border-radius: 28px; padding: 12px; }
@@ -84,22 +85,17 @@
       50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
-    /* Hapus CSS transition agar tidak bentrok dengan smoothing JS */
     .arrow-rotator { width: 100%; height: 100%; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
 
-    /* Desain Marker Pom Bensin */
-    .gas-marker {
-      width: 36px; height: 36px;
+    /* Ikon Pom Bensin Native MapLibre */
+    .gas-marker-icon {
+      width: 24px; height: 24px;
       background: #ffffff;
-      border: 3px solid #0f172a;
+      border: 2px solid #0f172a;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      cursor: pointer;
-      transition: transform 0.1s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-    .gas-marker:hover { transform: scale(1.1); }
 
     .rider-name-tooltip {
       background: rgba(255, 255, 255, 0.95) !important;
@@ -127,6 +123,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="btnGas" class="header-btn btn-gas-active" aria-label="Tampilkan Pom Bensin">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h12"/><path d="M4 9h10"/><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>
+        </button>
         <button id="btn3D" class="header-btn" aria-label="Aktifkan tampilan 3D">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
         </button>
@@ -184,7 +183,7 @@
     let isTracking = false, is3D = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
-    let gasStationMarkers = []; 
+    let showGasStations = true; 
     
     let gpsBearing = 0;
     let compassHeading = 0;
@@ -195,6 +194,7 @@
     let lastSpeedTime = null; 
     let isFirstFix = true; 
     let isFetchingGas = false; 
+    let gasDebounce = null;
 
     // Desain Panah Modern
     function getArrowIconHTML(isSelf = true) {
@@ -235,7 +235,6 @@
       }
     }
 
-    // FIX JITTER: Algoritma Smoothing untuk arah panah
     function getAngleDifference(current, target) {
       let diff = target - current;
       while (diff < -180) diff += 360;
@@ -246,13 +245,12 @@
     function animateArrow() {
       const diff = getAngleDifference(currentHeading, targetHeading);
       if (Math.abs(diff) > 0.5) {
-        currentHeading += diff * 0.15; // Gerakkan 15% menuju target (makin halus)
+        currentHeading += diff * 0.15; 
         updateMarkerRotation();
       }
       requestAnimationFrame(animateArrow);
     }
 
-    // FITUR GYRO: Memproses data Kompas / Gyroscope dengan Low Pass Filter
     function handleOrientation(event) {
       let heading = null;
       if (event.webkitCompassHeading !== undefined) {
@@ -262,7 +260,6 @@
       }
       
       if (heading !== null) {
-        // Filter Smoothing untuk Kompas agar tidak mudah goyah
         let diff = getAngleDifference(compassHeading, heading);
         if (Math.abs(diff) > 1) {
           compassHeading += diff * 0.2; 
@@ -281,9 +278,18 @@
       return (brng + 360) % 360;
     }
 
-    // Ambil data Pom Bensin
+    // OPTIMASI: Ambil data Pom Bensin dengan batasan zoom
     async function fetchGasStations() {
-      if (isFetchingGas) return;
+      if (!showGasStations || isFetchingGas) return;
+      
+      // Jangan cari pom bensin jika zoom terlalu jauh (mencegah load ribuan data)
+      if (map.getZoom() < 13) {
+        if (map.getSource('gas-stations')) {
+          map.getSource('gas-stations').setData({ type: 'FeatureCollection', features: [] });
+        }
+        return;
+      }
+
       isFetchingGas = true;
       try {
         const bounds = map.getBounds();
@@ -293,34 +299,37 @@
         const query = `[out:json][timeout:15];(
           node["amenity"="fuel"](${south},${west},${north},${east});
           way["amenity"="fuel"](${south},${west},${north},${east});
-        );out center 50;`;
+        );out center 100;`;
         
-        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const overpassUrls = [
+          'https://overpass.kumi.systems/api/interpreter',
+          'https://overpass-api.de/api/interpreter'
+        ];
         
-        gasStationMarkers.forEach(m => m.remove());
-        gasStationMarkers = [];
+        let data = null;
+        for (const url of overpassUrls) {
+          try {
+            const res = await fetch(`${url}?data=${encodeURIComponent(query)}`);
+            if (res.ok) {
+              data = await res.json();
+              break;
+            }
+          } catch (err) { console.warn(`Gagal dari ${url}`); }
+        }
         
-        data.elements.forEach(el => {
-          const lat = el.lat || el.center?.lat;
-          const lon = el.lon || el.center?.lon;
-          if (!lat || !lon) return;
-          
-          const name = el.tags?.name || el.tags?.brand || 'Pom Bensin';
-          const elDom = document.createElement('div');
-          elDom.className = 'gas-marker';
-          elDom.innerHTML = '⛽';
-          
-          const marker = new maplibregl.Marker({ element: elDom, anchor: 'center' })
-            .setLngLat([lon, lat])
-            .addTo(map);
-            
-          const popup = new maplibregl.Popup({ offset: 25, closeButton: false, className: 'rider-name-tooltip' }).setHTML(`<b>${name}</b>`);
-          marker.setPopup(popup);
-            
-          gasStationMarkers.push(marker);
-        });
+        if (!data) throw new Error("Server Overpass tidak merespon.");
+        
+        const features = data.elements.map(el => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [el.lon || el.center?.lon, el.lat || el.center?.lat] },
+          properties: { name: el.tags?.name || el.tags?.brand || 'Pom Bensin' }
+        })).filter(f => f.geometry.coordinates[0] && f.geometry.coordinates[1]);
+
+        // Update data source native layer (sangat ringan)
+        if (map.getSource('gas-stations')) {
+          map.getSource('gas-stations').setData({ type: 'FeatureCollection', features });
+        }
+        
       } catch (e) {
         console.error("Gagal memuat pom bensin:", e);
       } finally {
@@ -338,10 +347,16 @@
         bearing: 0
       });
 
-      // Jalankan animasi smoothing panah
       animateArrow();
 
       map.on('load', () => {
+        // OPTIMASI: Hilangkan layer POI bawaan OpenFreeMap untuk meringankan render
+        map.getStyle().layers.forEach(layer => {
+          if (layer.type === 'symbol' && layer.id.toLowerCase().includes('poi')) {
+            map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+        });
+
         const layers = map.getStyle().layers;
         let labelLayerId;
         for (let i = 0; i < layers.length; i++) {
@@ -373,8 +388,51 @@
         map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
         map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.8 } });
 
+        // OPTIMASI: Gunakan Native Layer untuk Pom Bensin
+        map.addSource('gas-stations', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        
+        // Background putih bulat
+        map.addLayer({
+          id: 'gas-station-bg',
+          type: 'circle',
+          source: 'gas-stations',
+          paint: {
+            'circle-radius': 12,
+            'circle-color': '#ffffff',
+            'circle-stroke-color': '#0f172a',
+            'circle-stroke-width': 2,
+            'circle-pitch-alignment': 'map'
+          }
+        }, labelLayerId);
+
+        // Ikon pom bensin (memakai teks emoji agar selalu terrender)
+        map.addLayer({
+          id: 'gas-station-icon',
+          type: 'symbol',
+          source: 'gas-stations',
+          layout: {
+            'text-field': '⛽',
+            'text-size': 14,
+            'text-allow-overlap': true,
+            'text-pitch-alignment': 'map'
+          }
+        }, labelLayerId);
+
+        // Popup Native Layer
+        const gasPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'rider-name-tooltip' });
+        map.on('click', 'gas-station-bg', (e) => {
+          const coordinates = e.features[0].geometry.coordinates.slice();
+          const name = e.features[0].properties.name;
+          gasPopup.setLngLat(coordinates).setHTML(`<b>${name}</b>`).addTo(map);
+        });
+        map.on('mouseenter', 'gas-station-bg', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'gas-station-bg', () => { map.getCanvas().style.cursor = ''; gasPopup.remove(); });
+
         fetchGasStations();
-        map.on('moveend', fetchGasStations);
+        map.on('moveend', () => {
+          clearTimeout(gasDebounce);
+          gasDebounce = setTimeout(fetchGasStations, 300);
+        });
 
         document.getElementById('centerBtn').addEventListener('click', () => {
           if (navigator.geolocation) {
@@ -396,6 +454,21 @@
           }
         });
 
+        document.getElementById('btnGas').addEventListener('click', () => {
+          showGasStations = !showGasStations;
+          const btn = document.getElementById('btnGas');
+          if (showGasStations) {
+            btn.classList.add('btn-gas-active');
+            map.setLayoutProperty('gas-station-bg', 'visibility', 'visible');
+            map.setLayoutProperty('gas-station-icon', 'visibility', 'visible');
+            fetchGasStations();
+          } else {
+            btn.classList.remove('btn-gas-active');
+            map.setLayoutProperty('gas-station-bg', 'visibility', 'none');
+            map.setLayoutProperty('gas-station-icon', 'visibility', 'none');
+          }
+        });
+
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
             const initPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -411,6 +484,7 @@
               .addTo(map);
             
             document.getElementById('statusText').innerText = "Siap memulai perjalanan";
+            fetchGasStations();
           }, (err) => {
             document.getElementById('statusText').innerText = "Izinkan akses lokasi";
           }, { enableHighAccuracy: true });
@@ -475,7 +549,6 @@
       isFirstFix = true; 
       lastSpeedTime = null; 
       
-      // FIX 1: Pastikan garis rute kosong saat mulai
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
       
       const btn = document.getElementById('trackBtn');
@@ -489,7 +562,6 @@
 
       refreshUserIcon();
 
-      // Request Gyro Permission (Khusus iOS 13+)
       if (typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(permissionState => {
@@ -513,7 +585,6 @@
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       clearInterval(timerInterval);
       
-      // FIX 1: Hapus garis moving line ketika perjalanan dihentikan
       pathCoordinates = [];
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
       
@@ -557,7 +628,6 @@
         if (dt > 0) speed = (dist * 1000 / dt) * 3.6; 
       }
 
-      // Logika Panah
       isMoving = speed > 3; 
       if (isMoving) {
         targetHeading = gpsBearing;
@@ -565,11 +635,9 @@
         targetHeading = compassHeading;
       }
 
-      // Update UI
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
-      // Update Peta 3D
       if (is3D) {
         map.easeTo({ center: [pos.lng, pos.lat], bearing: currentHeading, pitch: 60, zoom: 17, duration: 1000 });
       } else {
