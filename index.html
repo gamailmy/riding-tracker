@@ -8,12 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-    html, body { height: 100%; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; overflow: hidden; }
+    html, body { height: 100%; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; overflow: hidden; transition: background 0.3s ease; }
     
-    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #e5e7eb; z-index: 0; }
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #e5e7eb; z-index: 0; transition: background 0.3s ease; }
     .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
 
-    .ui-overlay { position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; width: calc(100% - 24px); max-width: 400px; pointer-events: none; }
+    /* Ukuran diubah menjadi 32px (16px kiri/kanan) agar peta lebih luas */
+    .ui-overlay { position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; width: calc(100% - 32px); max-width: 420px; pointer-events: none; }
     .ui-overlay > * { pointer-events: auto; }
 
     .ios-glass {
@@ -22,52 +23,69 @@
       -webkit-backdrop-filter: blur(24px) saturate(180%);
       border: 1px solid rgba(255, 255, 255, 0.6);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      transition: all 0.3s ease;
     }
 
-    .header-container { top: calc(env(safe-area-inset-top) + 12px); }
-    .header-box { border-radius: 24px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-    .header-left { display: flex; align-items: center; gap: 10px; }
+    /* Header lebih ringkas */
+    .header-container { top: calc(env(safe-area-inset-top) + 10px); }
+    .header-box { border-radius: 20px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
     .header-right { display: flex; gap: 6px; }
-    .logo-circle { width: 32px; height: 32px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
-    .header-title { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; }
-    .header-status { font-size: 9px; font-weight: 700; color: #64748b; margin-top: 2px; }
-    .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, background 0.2s; }
+    .logo-circle { width: 28px; height: 28px; font-size: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fbbf24, #f59e0b); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
+    .header-title { font-size: 12px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; transition: color 0.3s ease; }
+    .header-status { font-size: 8px; font-weight: 700; color: #64748b; margin-top: 2px; transition: color 0.3s ease; }
+    .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 7px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, background 0.2s; }
     .header-btn:active { transform: scale(0.9); }
-    .header-btn.active { background: #0f172a; color: white; }
+    .header-btn.active { background: #0f172a; }
     .header-btn.active svg { stroke: white; }
+    .header-btn svg { stroke: #334155; transition: stroke 0.3s ease; }
 
     /* Panel Pengaturan */
-    .settings-container { top: calc(env(safe-area-inset-top) + 64px); display: flex; flex-direction: column; gap: 8px; opacity: 0; transform: translateY(-10px); pointer-events: none; transition: all 0.3s ease; }
-    .settings-container.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .settings-box { border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
-    .settings-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: #0f172a; }
+    .settings-container { 
+      top: calc(env(safe-area-inset-top) + 56px); 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+      opacity: 0; 
+      transform: translateX(-50%) translateY(-10px); 
+      pointer-events: none; 
+      transition: all 0.3s ease; 
+    } 
+    .settings-container.show { 
+      opacity: 1; 
+      transform: translateX(-50%) translateY(0); 
+      pointer-events: auto; 
+    }
+    .settings-box { border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .settings-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #0f172a; transition: color 0.3s ease; }
     
     /* Toggle Switch iOS Style */
-    .switch { position: relative; display: inline-block; width: 44px; height: 26px; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 24px; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 26px; }
-    .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
     input:checked + .slider { background-color: #10b981; }
-    input:checked + .slider:before { transform: translateX(18px); }
+    input:checked + .slider:before { transform: translateX(16px); }
 
-    .bottom-container { bottom: calc(env(safe-area-inset-bottom) + 12px); }
-    .bottom-box { border-radius: 28px; padding: 12px; }
+    /* Bottom box lebih ringkas */
+    .bottom-container { bottom: calc(env(safe-area-inset-bottom) + 10px); }
+    .bottom-box { border-radius: 24px; padding: 10px; }
 
-    .stats-row { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 8px; margin-bottom: 10px; }
-    .stat-card { border-radius: 18px; padding: 8px 4px; text-align: center; }
-    .stat-light { background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255,255,255,0.5); }
+    .stats-row { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .stat-card { border-radius: 14px; padding: 6px 2px; text-align: center; }
+    .stat-light { background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255,255,255,0.5); transition: all 0.3s ease; }
     .stat-dark { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     
-    .stat-label { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+    .stat-label { font-size: 7px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; transition: color 0.3s ease; }
     .stat-label-light { color: #fbbf24; }
     
     .stat-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 2px; }
-    .stat-value { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; font-variant-numeric: tabular-nums; }
+    .stat-value { font-size: 20px; font-weight: 800; color: #0f172a; line-height: 1; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
     .stat-value-light { color: #ffffff; }
-    .stat-unit { font-size: 9px; font-weight: 700; color: #64748b; }
+    .stat-unit { font-size: 8px; font-weight: 700; color: #64748b; transition: color 0.3s ease; }
     .stat-unit-light { color: #94a3b8; }
 
-    .track-btn { width: 100%; height: 52px; border: none; border-radius: 18px; font-size: 15px; font-weight: 800; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35); }
+    .track-btn { width: 100%; height: 46px; border: none; border-radius: 14px; font-size: 14px; font-weight: 800; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35); }
     .track-btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35); }
     .track-btn.stop { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); }
 
@@ -100,12 +118,62 @@
     .leaflet-tooltip.rider-name-tooltip::before { display: none; }
 
     /* Popup Global (Pom Bensin & KML) */
-    .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); transition: all 0.3s ease; }
     .leaflet-popup-content { margin: 12px 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
-    .gas-popup-title, .kml-popup-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-    .gas-popup-info, .kml-popup-desc { font-size: 12px; color: #64748b; font-weight: 600; }
+    .gas-popup-title, .kml-popup-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; transition: color 0.3s ease; }
+    .gas-popup-info, .kml-popup-desc { font-size: 12px; color: #64748b; font-weight: 600; transition: color 0.3s ease; }
     .kml-popup-desc { line-height: 1.4; max-width: 200px; white-space: normal; }
     .gas-popup-dist { font-size: 11px; color: #059669; font-weight: 700; margin-top: 6px; background: #d1fae5; padding: 2px 8px; border-radius: 8px; display: inline-block; }
+
+    /* ==================== DARK MODE STYLES ==================== */
+    body.dark-mode { background: #0b1120; }
+    body.dark-mode #map { background: #0b1120; }
+    
+    body.dark-mode .ios-glass {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    body.dark-mode .header-title { color: #f8fafc; }
+    body.dark-mode .header-status { color: #94a3b8; }
+    body.dark-mode .header-btn { background: rgba(255, 255, 255, 0.1); }
+    body.dark-mode .header-btn svg { stroke: #e2e8f0; }
+    body.dark-mode .header-btn.active { background: #334155; }
+    body.dark-mode .header-btn.active svg { stroke: #f8fafc; }
+
+    body.dark-mode .settings-item { color: #f8fafc; }
+
+    body.dark-mode .stat-light {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    body.dark-mode .stat-value { color: #f8fafc; }
+    body.dark-mode .stat-label { color: #94a3b8; }
+    body.dark-mode .stat-unit { color: #94a3b8; }
+
+    body.dark-mode .leaflet-popup-content-wrapper {
+      background: rgba(15, 23, 42, 0.95);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    body.dark-mode .gas-popup-title, body.dark-mode .kml-popup-title { color: #f8fafc; }
+    body.dark-mode .gas-popup-info, body.dark-mode .kml-popup-desc { color: #cbd5e1; }
+    body.dark-mode .gas-popup-dist { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+
+    body.dark-mode .leaflet-tooltip.rider-name-tooltip {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #334155;
+      color: #f8fafc;
+    }
+
+    /* Leaflet Controls (Zoom) Dark Mode */
+    body.dark-mode .leaflet-bar a {
+      background: rgba(15, 23, 42, 0.8);
+      color: #f8fafc;
+      border-color: rgba(255,255,255,0.1);
+    }
+    body.dark-mode .leaflet-bar a:hover {
+      background: rgba(30, 41, 59, 0.9);
+    }
   </style>
 </head>
 <body>
@@ -122,10 +190,10 @@
       </div>
       <div class="header-right">
         <button id="settingsBtn" class="header-btn" aria-label="Pengaturan">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <button id="centerBtn" class="header-btn" aria-label="Pusatkan peta">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
     </div>
@@ -134,6 +202,13 @@
   <!-- Panel Pengaturan Layer -->
   <div id="settingsPanel" class="ui-overlay settings-container">
     <div class="settings-box ios-glass">
+      <div class="settings-item">
+        <span>Mode Gelap (Hemat Baterai)</span>
+        <label class="switch">
+          <input type="checkbox" id="toggleDark">
+          <span class="slider"></span>
+        </label>
+      </div>
       <div class="settings-item">
         <span>Rute Touring (KML)</span>
         <label class="switch">
@@ -182,8 +257,6 @@
   
   <script>
     // === KONFIGURASI RUTE KML ===
-    // Ganti URL di bawah ini dengan URL file KML Anda. 
-    // Jika tidak ada rute, biarkan kosong: const URL_KML_ROUTE = "";
     const URL_KML_ROUTE = "touring_route.kml"; 
     
     // Konfigurasi Firebase
@@ -211,7 +284,7 @@
     const myName = sanitize(urlParams.get('name'));
 
     // State Global
-    let map, userMarker, polyline, kmlLayer;
+    let map, userMarker, polyline, kmlLayer, currentTileLayer;
     let isTracking = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
     let otherRiders = {};
     let lastBearing = 0;
@@ -222,6 +295,10 @@
     // State Pom Bensin
     let gasStationLayer;
     let lastGasFetchCoord = null;
+
+    // Konfigurasi Tile Map
+    const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
     // Ikon Panah Pengarah - Eksplisit Hardcode (Self=Merah, Other=Biru)
     function getDirectionalIconHTML(isSelf = true) {
@@ -296,7 +373,6 @@
     }
 
     async function fetchGasStations(lat, lon) {
-      // Jika layer dimatikan dari menu, jangan lakukan fetch
       if (!document.getElementById('toggleGas').checked) return;
       
       const radius = 5000; // 5 km
@@ -332,18 +408,25 @@
     }
 
     function initMap() {
+      // Cek preferensi dark mode dari localStorage
+      const isDarkMode = localStorage.getItem('oac_dark_mode') === 'true';
+      if (isDarkMode) document.body.classList.add('dark-mode');
+      document.getElementById('toggleDark').checked = isDarkMode;
+
       map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-6.2088, 106.8456], 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+      
+      // Terapkan tile sesuai mode
+      currentTileLayer = L.tileLayer(isDarkMode ? darkTiles : lightTiles, { maxZoom: 20 }).addTo(map);
       L.control.zoom({ position: 'bottomright' }).addTo(map);
       L.control.attribution({ prefix: false, position: 'bottomleft' }).addAttribution('© CARTO © OSM').addTo(map);
 
       polyline = L.polyline([], { color: '#f59e0b', weight: 5 }).addTo(map);
       gasStationLayer = L.layerGroup().addTo(map);
 
-      // === LOAD RUTE KML DENGAN TITIK INFORMASI ===
+      // === LOAD RUTE KML ===
       if (URL_KML_ROUTE && URL_KML_ROUTE !== "") {
         const kmlCustomLayer = L.geoJson(null, {
-          style: { color: "#2563eb", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" },
+          style: { color: "#3b82f6", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" },
           pointToLayer: function (feature, latlng) {
             return L.marker(latlng, { 
               icon: L.divIcon({
@@ -375,7 +458,7 @@
         kmlLayer.on('ready', function() {
           map.fitBounds(kmlLayer.getBounds(), { padding: [60, 60] });
         }).on('error', function(e) {
-          console.warn("Gagal memuat file KML. Pastikan URL/path benar dan diizinkan (CORS).", e);
+          console.warn("Gagal memuat file KML.", e);
         });
       }
 
@@ -394,11 +477,25 @@
         settingsBtn.classList.toggle('active');
       });
 
-      // Tutup panel jika klik di luar
       document.addEventListener('click', (e) => {
         if (!settingsPanel.contains(e.target) && e.target !== settingsBtn && !settingsBtn.contains(e.target)) {
           settingsPanel.classList.remove('show');
           settingsBtn.classList.remove('active');
+        }
+      });
+
+      // Toggle Dark Mode
+      document.getElementById('toggleDark').addEventListener('change', (e) => {
+        const isDark = e.target.checked;
+        localStorage.setItem('oac_dark_mode', isDark);
+        if (isDark) {
+          document.body.classList.add('dark-mode');
+          map.removeLayer(currentTileLayer);
+          currentTileLayer = L.tileLayer(darkTiles, { maxZoom: 20 }).addTo(map);
+        } else {
+          document.body.classList.remove('dark-mode');
+          map.removeLayer(currentTileLayer);
+          currentTileLayer = L.tileLayer(lightTiles, { maxZoom: 20 }).addTo(map);
         }
       });
 
@@ -594,7 +691,6 @@
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
-      // Cek apakah perlu update pom bensin (jika berpindah > 2km)
       if (!lastGasFetchCoord || calculateDistance(lastGasFetchCoord.lat, lastGasFetchCoord.lng, pos.lat, pos.lng) > 2) {
         fetchGasStations(pos.lat, pos.lng);
         lastGasFetchCoord = pos;
