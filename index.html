@@ -58,13 +58,13 @@
     .track-btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35); }
     .track-btn.stop { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); }
 
-    /* Ikon Motor & Animasi */
-    .bike-wrapper { position: relative; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+    /* Ikon Panah Modern & Efek Pulse */
+    .arrow-wrapper { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; z-index: 10; }
     
     .pulse-circle { 
       position: absolute; top: 50%; left: 50%; 
       transform: translate(-50%, -50%) scale(0.8); 
-      width: 60px; height: 60px; border-radius: 50%; 
+      width: 50px; height: 50px; border-radius: 50%; 
       animation: pulseBlink 2s infinite ease-in-out; 
       z-index: 0;
       will-change: transform, opacity;
@@ -84,19 +84,22 @@
       50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
-    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
+    .arrow-rotator { width: 100%; height: 100%; transition: transform 0.2s ease-out; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
 
-    @keyframes bikeRumble {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      25% { transform: translate(-0.2px, -0.4px) rotate(-0.6deg); }
-      50% { transform: translate(0.2px, 0) rotate(0.4deg); }
-      75% { transform: translate(-0.2px, 0.4px) rotate(-0.4deg); }
-      100% { transform: translate(0.2px, -0.4px) rotate(0.6deg); }
+    /* Desain Marker Pom Bensin */
+    .gas-marker {
+      width: 36px; height: 36px;
+      background: #ffffff;
+      border: 3px solid #0f172a;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: transform 0.1s;
     }
-    .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.2s infinite linear; }
-    .bike-rotator svg { filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6)); }
+    .gas-marker:hover { transform: scale(1.1); }
 
-    /* Tooltip Pom Bensin & Nama Rider */
     .rider-name-tooltip {
       background: rgba(255, 255, 255, 0.95) !important;
       border: 1px solid #cbd5e1 !important;
@@ -180,39 +183,37 @@
     let isTracking = false, is3D = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
+    let gasStationMarkers = []; 
     
-    let lastBearing = 0; 
+    let gpsBearing = 0;
+    let compassHeading = 0;
+    let currentHeading = 0;
+    let isMoving = false;
+    
     let lastSpeedTime = null; 
     let isFirstFix = true; 
-    let isFetchingGas = false; // Proteksi agar tidak spam API pom bensin
+    let isFetchingGas = false; 
 
-    function getBikeIconHTML(isSelf = true) {
+    // Desain Panah Modern (Default menghadap Utara / 0 Derajat)
+    function getArrowIconHTML(isSelf = true) {
       const pulseClass = isSelf ? 'pulse-self' : 'pulse-other';
-      const mainColor = isSelf ? '#ef4444' : '#3b82f6'; 
-      const darkColor = isSelf ? '#b91c1c' : '#1d4ed8';
-      const movingClass = isTracking && isSelf ? 'bike-moving-icon' : '';
+      const mainColor = isSelf ? '#3b82f6' : '#ef4444'; 
+      const darkColor = isSelf ? '#1d4ed8' : '#b91c1c';
+      const gradId = isSelf ? 'grad_self' : 'grad_other';
       
       return `
-        <div class="bike-wrapper ${movingClass}">
+        <div class="arrow-wrapper">
           <div class="pulse-circle ${pulseClass}"></div>
-          <div class="bike-rotator">
-            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 64 64" fill="none">
-              <ellipse cx="32" cy="56" rx="20" ry="3" fill="rgba(0,0,0,0.35)"/>
-              <circle cx="14" cy="46" r="9" fill="#111827" stroke="#374151" stroke-width="3"/>
-              <circle cx="14" cy="46" r="3.5" fill="#6b7280"/>
-              <circle cx="50" cy="46" r="9" fill="#111827" stroke="#374151" stroke-width="3"/>
-              <circle cx="50" cy="46" r="3.5" fill="#6b7280"/>
-              <path d="M14 46 L34 42 L50 46" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"/>
-              <path d="M18 44 C22 34, 30 32, 38 33 L48 35 C52 35.5, 53 38, 51 40 L46 45 L18 45 Z" fill="${mainColor}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M24 40 C28 35, 34 34, 38 36 L34 42 H22Z" fill="#0f172a" stroke="#ffffff" stroke-width="1.2"/>
-              <path d="M18 44 L14 44 C12 44, 12 40, 16 40 L22 40" fill="#1f2937" stroke="#ffffff" stroke-width="1.2"/>
-              <path d="M48 35 L54 27 C56 24, 58 26, 57 30 L53 40" fill="${darkColor}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M54 30 C56 30, 56.5 32, 55 34 L52 33 Z" fill="#fde68a" stroke="#ffffff" stroke-width="1"/>
-              <path d="M54 27 L57 20 C58.5 17, 60 19, 59 22 L56 28" fill="#bfdbfe" stroke="#ffffff" stroke-width="1"/>
-              <path d="M53 27 L50 18 M55 18 H45" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="55" cy="18" r="2.5" fill="${darkColor}" stroke="#ffffff" stroke-width="1"/>
-              <circle cx="45" cy="18" r="2.5" fill="${darkColor}" stroke="#ffffff" stroke-width="1"/>
-              <path d="M18 46 L13 48" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+          <div class="arrow-rotator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 48 48" fill="none">
+              <defs>
+                <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="${mainColor}"/>
+                  <stop offset="100%" stop-color="${darkColor}"/>
+                </linearGradient>
+              </defs>
+              <path d="M24 5 L37 38 L24 31 L11 38 Z" fill="url(#${gradId})" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round" filter="drop-shadow(0px 4px 4px rgba(0,0,0,0.4))"/>
+              <circle cx="24" cy="24" r="3" fill="#ffffff" opacity="0.9"/>
             </svg>
           </div>
         </div>
@@ -221,9 +222,36 @@
 
     function refreshUserIcon() {
       if (!userMarkerEl) return;
-      userMarkerEl.innerHTML = getBikeIconHTML(true);
-      const rotator = userMarkerEl.querySelector('.bike-rotator');
-      if (rotator) rotator.style.transform = `rotate(${lastBearing - 90}deg)`;
+      userMarkerEl.innerHTML = getArrowIconHTML(true);
+      updateMarkerRotation();
+    }
+
+    function updateMarkerRotation() {
+      if (userMarkerEl) {
+        const rotator = userMarkerEl.querySelector('.arrow-rotator');
+        if (rotator) rotator.style.transform = `rotate(${currentHeading}deg)`;
+      }
+    }
+
+    // FITUR GYRO: Memproses data Kompas / Gyroscope
+    function handleOrientation(event) {
+      let heading = null;
+      if (event.webkitCompassHeading !== undefined) {
+        // Untuk iOS Safari
+        heading = event.webkitCompassHeading;
+      } else if (event.alpha !== null && event.absolute) {
+        // Untuk Android / Browser lain
+        heading = 360 - event.alpha;
+      }
+      
+      if (heading !== null) {
+        compassHeading = heading;
+        // Jika pengguna berhenti / pelan, panah ikut arah hadap HP
+        if (!isMoving) {
+          currentHeading = compassHeading;
+          updateMarkerRotation();
+        }
+      }
     }
 
     function calculateBearing(lat1, lon1, lat2, lon2) {
@@ -234,31 +262,46 @@
       return (brng + 360) % 360;
     }
 
-    // FITUR BARU: Mengambil data Pom Bensin dari OpenStreetMap
+    // Ambil data Pom Bensin
     async function fetchGasStations() {
       if (isFetchingGas) return;
       isFetchingGas = true;
-      
       try {
         const bounds = map.getBounds();
         const south = bounds.getSouth(), west = bounds.getWest();
         const north = bounds.getNorth(), east = bounds.getEast();
         
-        const query = `[out:json][timeout:10];(node["amenity"="fuel"](${south},${west},${north},${east}););out;`;
-        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+        const query = `[out:json][timeout:15];(
+          node["amenity"="fuel"](${south},${west},${north},${east});
+          way["amenity"="fuel"](${south},${west},${north},${east});
+        );out center 50;`;
         
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
         const res = await fetch(url);
         const data = await res.json();
         
-        const features = data.elements.map(el => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [el.lon, el.lat] },
-          properties: { name: el.tags?.name || el.tags?.brand || 'Pom Bensin' }
-        }));
-
-        if (map.getSource('gas-stations')) {
-          map.getSource('gas-stations').setData({ type: 'FeatureCollection', features });
-        }
+        gasStationMarkers.forEach(m => m.remove());
+        gasStationMarkers = [];
+        
+        data.elements.forEach(el => {
+          const lat = el.lat || el.center?.lat;
+          const lon = el.lon || el.center?.lon;
+          if (!lat || !lon) return;
+          
+          const name = el.tags?.name || el.tags?.brand || 'Pom Bensin';
+          const elDom = document.createElement('div');
+          elDom.className = 'gas-marker';
+          elDom.innerHTML = '⛽';
+          
+          const marker = new maplibregl.Marker({ element: elDom, anchor: 'center' })
+            .setLngLat([lon, lat])
+            .addTo(map);
+            
+          const popup = new maplibregl.Popup({ offset: 25, closeButton: false, className: 'rider-name-tooltip' }).setHTML(`<b>${name}</b>`);
+          marker.setPopup(popup);
+            
+          gasStationMarkers.push(marker);
+        });
       } catch (e) {
         console.error("Gagal memuat pom bensin:", e);
       } finally {
@@ -286,64 +329,28 @@
             }
         }
 
-        map.addLayer({
-            'id': '3d-buildings',
-            'source': 'openmaptiles',
-            'source-layer': 'building',
-            'filter': ['==', 'extrude', 'true'],
-            'type': 'fill-extrusion',
-            'minzoom': 14,
-            'paint': {
-                'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'render_height'], 0, '#d1d5db', 50, '#9ca3af', 100, '#6b7280'],
-                'fill-extrusion-height': ['get', 'render_height'],
-                'fill-extrusion-base': ['get', 'render_min_height'],
-                'fill-extrusion-opacity': 0.85
-            }
-        }, labelLayerId);
+        if (labelLayerId) {
+          map.addLayer({
+              'id': '3d-buildings',
+              'source': 'openmaptiles',
+              'source-layer': 'building',
+              'filter': ['==', 'extrude', 'true'],
+              'type': 'fill-extrusion',
+              'minzoom': 14,
+              'paint': {
+                  'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'render_height'], 0, '#d1d5db', 50, '#9ca3af', 100, '#6b7280'],
+                  'fill-extrusion-height': ['get', 'render_height'],
+                  'fill-extrusion-base': ['get', 'render_min_height'],
+                  'fill-extrusion-opacity': 0.85
+              }
+          }, labelLayerId);
+        }
 
         map.setLayoutProperty('3d-buildings', 'visibility', 'none');
 
-        // Layer Jalur Rute
         map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
         map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.8 } });
 
-        // FITUR BARU: Layer Pom Bensin
-        map.addSource('gas-stations', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        
-        map.addLayer({
-          id: 'gas-station-bg',
-          type: 'circle',
-          source: 'gas-stations',
-          paint: {
-            'circle-radius': 14,
-            'circle-color': '#ffffff',
-            'circle-stroke-color': '#0f172a',
-            'circle-stroke-width': 2
-          }
-        }, labelLayerId);
-
-        map.addLayer({
-          id: 'gas-station-icon',
-          type: 'symbol',
-          source: 'gas-stations',
-          layout: {
-            'text-field': '⛽',
-            'text-size': 14,
-            'text-allow-overlap': true
-          }
-        }, labelLayerId);
-
-        // Popup Pom Bensin saat diklik
-        const gasPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'rider-name-tooltip' });
-        map.on('click', 'gas-station-bg', (e) => {
-          const coordinates = e.features[0].geometry.coordinates.slice();
-          const name = e.features[0].properties.name;
-          gasPopup.setLngLat(coordinates).setHTML(`<b>${name}</b>`).addTo(map);
-        });
-        map.on('mouseenter', 'gas-station-bg', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'gas-station-bg', () => { map.getCanvas().style.cursor = ''; gasPopup.remove(); });
-
-        // Ambil pom bensin saat pertama kali load dan saat peta digerakkan
         fetchGasStations();
         map.on('moveend', fetchGasStations);
 
@@ -356,7 +363,6 @@
         document.getElementById('btn3D').addEventListener('click', () => {
           is3D = !is3D;
           const btn3D = document.getElementById('btn3D');
-          
           if (is3D) {
             btn3D.classList.add('btn-3d-active');
             map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
@@ -374,9 +380,9 @@
             map.flyTo({ center: [initPos.lng, initPos.lat], zoom: 17, essential: true });
             
             userMarkerEl = document.createElement('div');
-            userMarkerEl.style.width = '54px';
-            userMarkerEl.style.height = '54px';
-            userMarkerEl.innerHTML = getBikeIconHTML(true);
+            userMarkerEl.style.width = '48px';
+            userMarkerEl.style.height = '48px';
+            userMarkerEl.innerHTML = getArrowIconHTML(true);
             
             userMarker = new maplibregl.Marker({ element: userMarkerEl, anchor: 'center' })
               .setLngLat([initPos.lng, initPos.lat])
@@ -395,9 +401,9 @@
           if (!data || data.lat == null || data.lng == null) return; 
           
           const el = document.createElement('div');
-          el.style.width = '54px';
-          el.style.height = '54px';
-          el.innerHTML = getBikeIconHTML(false);
+          el.style.width = '48px';
+          el.style.height = '48px';
+          el.innerHTML = getArrowIconHTML(false);
           
           const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([data.lng, data.lat])
@@ -407,8 +413,8 @@
           marker.setPopup(popup).addTo(map);
           
           if (data.bearing !== undefined) {
-            const rotator = el.querySelector('.bike-rotator');
-            if (rotator) rotator.style.transform = `rotate(${data.bearing - 90}deg)`;
+            const rotator = el.querySelector('.arrow-rotator');
+            if (rotator) rotator.style.transform = `rotate(${data.bearing}deg)`;
           }
           otherRiders[snap.key] = { marker, el };
         });
@@ -419,8 +425,8 @@
           if (!data || !otherRiders[snap.key] || data.lat == null || data.lng == null) return;
 
           otherRiders[snap.key].marker.setLngLat([data.lng, data.lat]);
-          const rotator = otherRiders[snap.key].el.querySelector('.bike-rotator');
-          if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing - 90}deg)`;
+          const rotator = otherRiders[snap.key].el.querySelector('.arrow-rotator');
+          if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing}deg)`;
         });
 
         activeRidersRef.on('child_removed', (snap) => {
@@ -460,8 +466,20 @@
 
       refreshUserIcon();
 
-      db.ref('activeRiders/' + myUid).onDisconnect().remove();
+      // Request Gyro Permission (Khusus iOS 13+)
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+            }
+          })
+          .catch(console.error);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
 
+      db.ref('activeRiders/' + myUid).onDisconnect().remove();
       timerInterval = setInterval(updateTimer, 1000);
       watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
     }
@@ -481,27 +499,21 @@
       refreshUserIcon();
 
       if (is3D) map.easeTo({ bearing: 0, pitch: 60, duration: 500 });
-
       db.ref('activeRiders/' + myUid).remove();
     }
 
     function onSuccess(position) {
       const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-      let bearing = lastBearing; 
       let dist = 0;
       
       if (userMarker) {
         userMarker.setLngLat([pos.lng, pos.lat]);
-        
         if (lastCoord) {
           dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
-          if (dist > 0.005) { 
-            bearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
-            lastBearing = bearing; 
-            
-            const rotator = userMarkerEl.querySelector('.bike-rotator');
-            if (rotator) rotator.style.transform = `rotate(${bearing - 90}deg)`;
-            
+          if (dist > 0.005) {
+            // Update Arah GPS saat bergerak
+            gpsBearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+            lastSpeedTime = Date.now();
             totalDistance += dist;
           }
         }
@@ -510,14 +522,7 @@
       pathCoordinates.push([pos.lng, pos.lat]); 
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoordinates } });
       
-      if (is3D) {
-        map.easeTo({ center: [pos.lng, pos.lat], bearing: bearing, pitch: 60, zoom: 17, duration: 1000 });
-      } else {
-        map.panTo([pos.lng, pos.lat]);
-      }
-      
-      lastCoord = pos;
-      
+      // Hitung Kecepatan
       let speed = 0;
       if (position.coords.speed != null && position.coords.speed > 0) {
         speed = position.coords.speed * 3.6;
@@ -525,18 +530,36 @@
         const dt = (Date.now() - lastSpeedTime) / 1000; 
         if (dt > 0) speed = (dist * 1000 / dt) * 3.6; 
       }
-      
-      if (dist > 0.005) lastSpeedTime = Date.now();
-      
+
+      // Logika Panah: Jika di atas 3km/jam ikut GPS, jika di bawahnya ikut Gyro
+      isMoving = speed > 3; 
+      if (isMoving) {
+        currentHeading = gpsBearing;
+      } else {
+        currentHeading = compassHeading;
+      }
+      updateMarkerRotation();
+
+      // Update UI
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
+      // Update Peta 3D
+      if (is3D) {
+        map.easeTo({ center: [pos.lng, pos.lat], bearing: currentHeading, pitch: 60, zoom: 17, duration: 1000 });
+      } else {
+        map.panTo([pos.lng, pos.lat]);
+      }
+      
+      lastCoord = pos;
+
+      // Kirim Data Firebase
       if (isTracking) {
         if (isFirstFix) {
-          db.ref('activeRiders/' + myUid).set({ name: myName, lat: pos.lat, lng: pos.lng, bearing: bearing });
+          db.ref('activeRiders/' + myUid).set({ name: myName, lat: pos.lat, lng: pos.lng, bearing: currentHeading });
           isFirstFix = false;
         } else {
-          db.ref('activeRiders/' + myUid).update({ lat: pos.lat, lng: pos.lng, bearing: bearing });
+          db.ref('activeRiders/' + myUid).update({ lat: pos.lat, lng: pos.lng, bearing: currentHeading });
         }
       }
     }
