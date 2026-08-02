@@ -227,6 +227,8 @@
     let lastBearing = 0, lastFirebaseUpdate = 0, gpsRetryCount = 0;
     let lastSpeedPos = null, lastSpeedTime = 0;
     let userCurrentLatLng = null;
+    let lastGasUpdateCoord = null; // Untuk throttling update marker SPBU
+    let allGasStations = []; // Menyungan data SPBU dari GitHub di memori
 
     const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
     const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -275,41 +277,54 @@
       });
     }
 
-    // === FITUR POM BENSIN (LOAD DARI GITHUB) ===
-    function loadGasStations() {
-      if (!document.getElementById('toggleGas').checked) return;
+    // === FITUR POM BENSIN RADIUS 5 KM ===
+    // Mengunduh data sekali, disimpan di array allGasStations
+    async function fetchGasStationsData() {
       if (URL_SPBU_GEOJSON === "" || URL_SPBU_GEOJSON.includes("USERNAME")) return;
+      try {
+        const res = await fetch(URL_SPBU_GEOJSON);
+        const data = await res.json();
+        if (data.features) {
+          allGasStations = data.features.map(f => ({
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+            name: f.properties.name || "Pom Bensin",
+            brand: f.properties.brand || ""
+          }));
+        }
+        // Render awal jika lokasi sudah didapat
+        if (userCurrentLatLng) updateVisibleGasStations(userCurrentLatLng.lat, userCurrentLatLng.lng);
+      } catch (err) {
+        console.error("Gagal memuat GeoJSON SPBU dari GitHub:", err);
+      }
+    }
 
-      fetch(URL_SPBU_GEOJSON)
-        .then(res => res.json())
-        .then(data => {
-          if (gasStationLayer) gasStationLayer.clearLayers();
-          
-          L.geoJSON(data, {
-            pointToLayer: function (feature, latlng) {
-              const name = (feature.properties && feature.properties.name) ? feature.properties.name : "Pom Bensin";
-              const brand = (feature.properties && feature.properties.brand) ? feature.properties.brand : "";
-              
-              const marker = L.marker(latlng, { icon: getGasStationIcon() });
-              
-              // Hitung jarak dinamis saat marker diklik
-              marker.on('click', function() {
-                let distStr = "";
-                if (userCurrentLatLng) {
-                  const dist = calculateDistance(userCurrentLatLng.lat, userCurrentLatLng.lng, latlng.lat, latlng.lng);
-                  distStr = `<div class="gas-popup-dist">Jarak: ${dist.toFixed(2)} km</div>`;
-                }
-                marker.bindPopup(`
-                  <div class="gas-popup-title">⛽ ${brand ? brand : name}</div>
-                  <div class="gas-popup-info">${name}</div>
-                  ${distStr}
-                `).openPopup();
-              });
-              return marker;
+    // Memfilter dan menampilkan marker dalam radius 5 km dari rider
+    function updateVisibleGasStations(lat, lon) {
+      if (!document.getElementById('toggleGas').checked) return;
+      if (gasStationLayer) gasStationLayer.clearLayers();
+      
+      const RADIUS_KM = 5; // Hanya tampilkan yang berjarak 5 km
+
+      allGasStations.forEach(station => {
+        const dist = calculateDistance(lat, lon, station.lat, station.lng);
+        if (dist <= RADIUS_KM) {
+          const marker = L.marker([station.lat, station.lng], { icon: getGasStationIcon() }).addTo(gasStationLayer);
+          // Hitung jarak dinamis saat marker diklik
+          marker.on('click', function() {
+            let distStr = "";
+            if (userCurrentLatLng) {
+              const liveDist = calculateDistance(userCurrentLatLng.lat, userCurrentLatLng.lng, station.lat, station.lng);
+              distStr = `<div class="gas-popup-dist">Jarak: ${liveDist.toFixed(2)} km</div>`;
             }
-          }).addTo(gasStationLayer);
-        })
-        .catch(err => console.error("Gagal memuat GeoJSON SPBU dari GitHub:", err));
+            marker.bindPopup(`
+              <div class="gas-popup-title">⛽ ${station.brand ? station.brand : station.name}</div>
+              <div class="gas-popup-info">${station.name}</div>
+              ${distStr}
+            `).openPopup();
+          });
+        }
+      });
     }
 
     function initMap() {
@@ -375,8 +390,12 @@
       document.getElementById('toggleRoute').addEventListener('change', (e) => { if (e.target.checked) { if (kmlLayer) map.addLayer(kmlLayer); } else { if (kmlLayer) map.removeLayer(kmlLayer); } });
       
       document.getElementById('toggleGas').addEventListener('change', (e) => {
-        if (e.target.checked) { map.addLayer(gasStationLayer); loadGasStations(); } 
-        else { map.removeLayer(gasStationLayer); }
+        if (e.target.checked) { 
+          map.addLayer(gasStationLayer); 
+          if (userCurrentLatLng) updateVisibleGasStations(userCurrentLatLng.lat, userCurrentLatLng.lng);
+        } else { 
+          map.removeLayer(gasStationLayer); 
+        }
       });
 
       if (navigator.geolocation) {
@@ -389,7 +408,7 @@
           userMarker = L.marker([initPos.lat, initPos.lng], { icon: arrowIcon }).addTo(map);
           document.getElementById('statusText').innerText = "Siap memulai perjalanan";
           
-          loadGasStations(); // Load SPBU sekali saja saat awal
+          fetchGasStationsData(); // Unduh data SPBU dari GitHub
           checkResumeTracking();
         }, (err) => { document.getElementById('statusText').innerText = "Izinkan akses lokasi"; }, { enableHighAccuracy: true });
       }
@@ -461,7 +480,7 @@
     function onSuccess(position) {
       if (!shouldAcceptPoint(position)) return;
       const pos = { lat: position.coords.latitude, lng: position.coords.longitude, timestamp: position.timestamp };
-      userCurrentLatLng = pos; // Update posisi user terbaru untuk perhitungan jarak SPBU
+      userCurrentLatLng = pos; // Update posisi user terbaru
       
       if (userMarker) {
         userMarker.setLatLng([pos.lat, pos.lng]);
@@ -485,6 +504,12 @@
       lastSpeedPos = pos; lastSpeedTime = Date.now();
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
+
+      // Update tampilan SPBU hanya jika rider berpindah > 1 km dari pengecekan terakhir (Hemat CPU)
+      if (!lastGasUpdateCoord || calculateDistance(lastGasUpdateCoord.lat, lastGasUpdateCoord.lng, pos.lat, pos.lng) > 1) {
+        updateVisibleGasStations(pos.lat, pos.lng);
+        lastGasUpdateCoord = pos;
+      }
 
       const now = Date.now();
       if (isTracking && now - lastFirebaseUpdate > 1000) {
