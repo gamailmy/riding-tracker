@@ -27,11 +27,11 @@
 
     .header-container { top: calc(env(safe-area-inset-top) + 10px); }
     .header-box { border-radius: 20px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
-    .header-left { display: flex; align-items: center; gap: 8px; }
-    .header-right { display: flex; gap: 6px; }
-    .logo-circle { width: 28px; height: 28px; font-size: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fbbf24, #f59e0b); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
-    .header-title { font-size: 12px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; transition: color 0.3s ease; }
-    .header-status { font-size: 8px; font-weight: 700; color: #64748b; margin-top: 2px; transition: color 0.3s ease; }
+    .header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .header-right { display: flex; gap: 6px; flex-shrink: 0; }
+    .logo-circle { width: 28px; height: 28px; font-size: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fbbf24, #f59e0b); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); flex-shrink: 0; }
+    .header-title { font-size: 12px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; transition: color 0.3s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .header-status { font-size: 8px; font-weight: 700; color: #64748b; margin-top: 2px; transition: color 0.3s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 7px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, background 0.2s; }
     .header-btn:active { transform: scale(0.9); }
     .header-btn.active { background: #0f172a; }
@@ -132,8 +132,8 @@
     <div class="header-box ios-glass">
       <div class="header-left">
         <div class="logo-circle">🏍️</div>
-        <div>
-          <h1 class="header-title">RIDING TRACKER</h1>
+        <div style="min-width: 0;">
+          <h1 id="headerTitle" class="header-title">Road Tracker</h1>
           <p id="statusText" class="header-status">Memuat lokasi...</p>
         </div>
       </div>
@@ -220,6 +220,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const myUid = urlParams.get('uid') || 'guest_' + Math.random().toString(36).substr(2, 9);
     const myName = sanitize(urlParams.get('name'));
+    
+    // Ambil nama depan saja
+    const firstName = myName.split(' ')[0] || 'Rider';
+    document.getElementById('headerTitle').innerText = `${firstName} Road Tracker`;
 
     let map, userMarker, polyline, kmlLayer, currentTileLayer, gasStationLayer;
     let isTracking = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
@@ -227,8 +231,8 @@
     let lastBearing = 0, lastFirebaseUpdate = 0, gpsRetryCount = 0;
     let lastSpeedPos = null, lastSpeedTime = 0;
     let userCurrentLatLng = null;
-    let lastGasUpdateCoord = null; // Untuk throttling update marker SPBU
-    let allGasStations = []; // Menyungan data SPBU dari GitHub di memori
+    let lastGasUpdateCoord = null; 
+    let allGasStations = []; 
 
     const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
     const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -278,7 +282,6 @@
     }
 
     // === FITUR POM BENSIN RADIUS 5 KM ===
-    // Mengunduh data sekali, disimpan di array allGasStations
     async function fetchGasStationsData() {
       if (URL_SPBU_GEOJSON === "" || URL_SPBU_GEOJSON.includes("USERNAME")) return;
       try {
@@ -292,25 +295,22 @@
             brand: f.properties.brand || ""
           }));
         }
-        // Render awal jika lokasi sudah didapat
         if (userCurrentLatLng) updateVisibleGasStations(userCurrentLatLng.lat, userCurrentLatLng.lng);
       } catch (err) {
         console.error("Gagal memuat GeoJSON SPBU dari GitHub:", err);
       }
     }
 
-    // Memfilter dan menampilkan marker dalam radius 5 km dari rider
     function updateVisibleGasStations(lat, lon) {
       if (!document.getElementById('toggleGas').checked) return;
       if (gasStationLayer) gasStationLayer.clearLayers();
       
-      const RADIUS_KM = 5; // Hanya tampilkan yang berjarak 5 km
+      const RADIUS_KM = 5; 
 
       allGasStations.forEach(station => {
         const dist = calculateDistance(lat, lon, station.lat, station.lng);
         if (dist <= RADIUS_KM) {
           const marker = L.marker([station.lat, station.lng], { icon: getGasStationIcon() }).addTo(gasStationLayer);
-          // Hitung jarak dinamis saat marker diklik
           marker.on('click', function() {
             let distStr = "";
             if (userCurrentLatLng) {
@@ -340,7 +340,6 @@
       polyline = L.polyline([], { color: '#f59e0b', weight: 5 }).addTo(map);
       gasStationLayer = L.layerGroup().addTo(map);
 
-      // Load Rute KML
       if (URL_KML_ROUTE && URL_KML_ROUTE !== "") {
         const kmlCustomLayer = L.geoJson(null, {
           style: { color: "#3b82f6", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" },
@@ -408,7 +407,7 @@
           userMarker = L.marker([initPos.lat, initPos.lng], { icon: arrowIcon }).addTo(map);
           document.getElementById('statusText').innerText = "Siap memulai perjalanan";
           
-          fetchGasStationsData(); // Unduh data SPBU dari GitHub
+          fetchGasStationsData(); 
           checkResumeTracking();
         }, (err) => { document.getElementById('statusText').innerText = "Izinkan akses lokasi"; }, { enableHighAccuracy: true });
       }
@@ -480,7 +479,7 @@
     function onSuccess(position) {
       if (!shouldAcceptPoint(position)) return;
       const pos = { lat: position.coords.latitude, lng: position.coords.longitude, timestamp: position.timestamp };
-      userCurrentLatLng = pos; // Update posisi user terbaru
+      userCurrentLatLng = pos; 
       
       if (userMarker) {
         userMarker.setLatLng([pos.lat, pos.lng]);
@@ -505,7 +504,6 @@
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
-      // Update tampilan SPBU hanya jika rider berpindah > 1 km dari pengecekan terakhir (Hemat CPU)
       if (!lastGasUpdateCoord || calculateDistance(lastGasUpdateCoord.lat, lastGasUpdateCoord.lng, pos.lat, pos.lng) > 1) {
         updateVisibleGasStations(pos.lat, pos.lng);
         lastGasUpdateCoord = pos;
