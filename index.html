@@ -27,11 +27,28 @@
     .header-container { top: calc(env(safe-area-inset-top) + 12px); }
     .header-box { border-radius: 24px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
     .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-right { display: flex; gap: 6px; }
     .logo-circle { width: 32px; height: 32px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
     .header-title { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; }
     .header-status { font-size: 9px; font-weight: 700; color: #64748b; margin-top: 2px; }
-    .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+    .header-btn { background: rgba(255,255,255,0.6); border: none; padding: 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, background 0.2s; }
     .header-btn:active { transform: scale(0.9); }
+    .header-btn.active { background: #0f172a; color: white; }
+    .header-btn.active svg { stroke: white; }
+
+    /* Panel Pengaturan */
+    .settings-container { top: calc(env(safe-area-inset-top) + 64px); display: flex; flex-direction: column; gap: 8px; opacity: 0; transform: translateY(-10px); pointer-events: none; transition: all 0.3s ease; }
+    .settings-container.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .settings-box { border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    .settings-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: #0f172a; }
+    
+    /* Toggle Switch iOS Style */
+    .switch { position: relative; display: inline-block; width: 44px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 26px; }
+    .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    input:checked + .slider { background-color: #10b981; }
+    input:checked + .slider:before { transform: translateX(18px); }
 
     .bottom-container { bottom: calc(env(safe-area-inset-bottom) + 12px); }
     .bottom-box { border-radius: 28px; padding: 12px; }
@@ -103,9 +120,34 @@
           <p id="statusText" class="header-status">Memuat lokasi...</p>
         </div>
       </div>
-      <button id="centerBtn" class="header-btn" aria-label="Pusatkan peta">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
+      <div class="header-right">
+        <button id="settingsBtn" class="header-btn" aria-label="Pengaturan">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button id="centerBtn" class="header-btn" aria-label="Pusatkan peta">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Pengaturan Layer -->
+  <div id="settingsPanel" class="ui-overlay settings-container">
+    <div class="settings-box ios-glass">
+      <div class="settings-item">
+        <span>Rute Touring (KML)</span>
+        <label class="switch">
+          <input type="checkbox" id="toggleRoute" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="settings-item">
+        <span>SPBU / Pom Bensin</span>
+        <label class="switch">
+          <input type="checkbox" id="toggleGas" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 
@@ -169,7 +211,7 @@
     const myName = sanitize(urlParams.get('name'));
 
     // State Global
-    let map, userMarker, polyline;
+    let map, userMarker, polyline, kmlLayer;
     let isTracking = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
     let otherRiders = {};
     let lastBearing = 0;
@@ -254,6 +296,9 @@
     }
 
     async function fetchGasStations(lat, lon) {
+      // Jika layer dimatikan dari menu, jangan lakukan fetch
+      if (!document.getElementById('toggleGas').checked) return;
+      
       const radius = 5000; // 5 km
       const query = `[out:json];node(around:${radius},${lat},${lon})["amenity"="fuel"];out body;`;
       
@@ -297,12 +342,8 @@
 
       // === LOAD RUTE KML DENGAN TITIK INFORMASI ===
       if (URL_KML_ROUTE && URL_KML_ROUTE !== "") {
-        // Layer custom untuk menggambar garis dan titik dari KML
         const kmlCustomLayer = L.geoJson(null, {
-          // Style untuk garis rute (LineString)
           style: { color: "#2563eb", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" },
-          
-          // Style untuk titik (Placemark/Point)
           pointToLayer: function (feature, latlng) {
             return L.marker(latlng, { 
               icon: L.divIcon({
@@ -316,8 +357,6 @@
               })
             });
           },
-          
-          // Bind Popup untuk setiap titik yang ada di KML
           onEachFeature: function (feature, layer) {
             if (feature.properties) {
               const name = feature.properties.name || "Titik Rute";
@@ -331,11 +370,9 @@
           }
         });
         
-        // Load file KML menggunakan omnivore
-        const kmlLayer = omnivore.kml(URL_KML_ROUTE, null, kmlCustomLayer).addTo(map);
+        kmlLayer = omnivore.kml(URL_KML_ROUTE, null, kmlCustomLayer).addTo(map);
         
         kmlLayer.on('ready', function() {
-          // Otomatis zoom ke rute touring saat pertama kali dibuka
           map.fitBounds(kmlLayer.getBounds(), { padding: [60, 60] });
         }).on('error', function(e) {
           console.warn("Gagal memuat file KML. Pastikan URL/path benar dan diizinkan (CORS).", e);
@@ -348,11 +385,44 @@
         }
       });
 
+      // === EVENT LISTENER MENU PENGATURAN ===
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsPanel = document.getElementById('settingsPanel');
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsPanel.classList.toggle('show');
+        settingsBtn.classList.toggle('active');
+      });
+
+      // Tutup panel jika klik di luar
+      document.addEventListener('click', (e) => {
+        if (!settingsPanel.contains(e.target) && e.target !== settingsBtn && !settingsBtn.contains(e.target)) {
+          settingsPanel.classList.remove('show');
+          settingsBtn.classList.remove('active');
+        }
+      });
+
+      // Toggle Rute Touring
+      document.getElementById('toggleRoute').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          if (kmlLayer) map.addLayer(kmlLayer);
+        } else {
+          if (kmlLayer) map.removeLayer(kmlLayer);
+        }
+      });
+
+      // Toggle Pom Bensin
+      document.getElementById('toggleGas').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          map.addLayer(gasStationLayer);
+        } else {
+          map.removeLayer(gasStationLayer);
+        }
+      });
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
           const initPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          
-          // Jika KML tidak ada, set view ke lokasi user. Jika KML ada, biarkan KML yang set view.
           if (URL_KML_ROUTE === "") map.setView([initPos.lat, initPos.lng], 16);
           
           const arrowIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] });
