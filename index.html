@@ -82,11 +82,12 @@
     }
     .leaflet-tooltip.rider-name-tooltip::before { display: none; }
 
-    /* Popup Pom Bensin */
+    /* Popup Global (Pom Bensin & KML) */
     .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
     .leaflet-popup-content { margin: 12px 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
-    .gas-popup-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-    .gas-popup-info { font-size: 12px; color: #64748b; font-weight: 600; }
+    .gas-popup-title, .kml-popup-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .gas-popup-info, .kml-popup-desc { font-size: 12px; color: #64748b; font-weight: 600; }
+    .kml-popup-desc { line-height: 1.4; max-width: 200px; white-space: normal; }
     .gas-popup-dist { font-size: 11px; color: #059669; font-weight: 700; margin-top: 6px; background: #d1fae5; padding: 2px 8px; border-radius: 8px; display: inline-block; }
   </style>
 </head>
@@ -294,14 +295,44 @@
       polyline = L.polyline([], { color: '#f59e0b', weight: 5 }).addTo(map);
       gasStationLayer = L.layerGroup().addTo(map);
 
-      // === LOAD RUTE KML ===
+      // === LOAD RUTE KML DENGAN TITIK INFORMASI ===
       if (URL_KML_ROUTE && URL_KML_ROUTE !== "") {
-        const touringLayer = L.geoJson(null, {
-          style: { color: "#2563eb", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" }
+        // Layer custom untuk menggambar garis dan titik dari KML
+        const kmlCustomLayer = L.geoJson(null, {
+          // Style untuk garis rute (LineString)
+          style: { color: "#2563eb", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" },
+          
+          // Style untuk titik (Placemark/Point)
+          pointToLayer: function (feature, latlng) {
+            return L.marker(latlng, { 
+              icon: L.divIcon({
+                className: 'kml-point-icon',
+                html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#fbbf24" stroke="#0f172a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(1px 3px 3px rgba(0,0,0,0.4));">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                       </svg>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+              })
+            });
+          },
+          
+          // Bind Popup untuk setiap titik yang ada di KML
+          onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+              const name = feature.properties.name || "Titik Rute";
+              const desc = feature.properties.description || "";
+              let popupContent = `<div class="kml-popup-title">📍 ${name}</div>`;
+              if (desc) {
+                popupContent += `<div class="kml-popup-desc">${desc}</div>`;
+              }
+              layer.bindPopup(popupContent);
+            }
+          }
         });
         
-        // Menggunakan leaflet-omnivore untuk load KML
-        const kmlLayer = omnivore.kml(URL_KML_ROUTE, null, touringLayer).addTo(map);
+        // Load file KML menggunakan omnivore
+        const kmlLayer = omnivore.kml(URL_KML_ROUTE, null, kmlCustomLayer).addTo(map);
         
         kmlLayer.on('ready', function() {
           // Otomatis zoom ke rute touring saat pertama kali dibuka
