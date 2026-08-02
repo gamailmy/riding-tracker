@@ -92,7 +92,6 @@
     .bike-rotator { width: 100%; height: 100%; transition: transform 0.3s ease-out; }
     .bike-rotator svg { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
 
-    /* Tooltip Nama Anggota (Permanent) */
     .leaflet-tooltip.rider-name-tooltip {
       background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(8px);
@@ -102,7 +101,7 @@
       padding: 2px 8px;
       font-size: 10px;
       font-weight: 800;
-      color: #1d4ed8; /* Warna biru agar match dengan panah */
+      color: #1d4ed8;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       white-space: nowrap;
     }
@@ -537,14 +536,15 @@
       const activeRidersRef = db.ref('activeRiders');
       activeRidersRef.on('child_added', (snap) => {
         if (snap.key === myUid) return;
-        const data = snap.val(); if (!data) return;
+        const data = snap.val(); 
+        
+        // Abaikan jika data tidak valid atau koordinat masih 0 (belum dapat GPS)
+        if (!data || !data.lat || !data.lng || (data.lat === 0 && data.lng === 0)) return;
         
         const icon = L.divIcon({ className: 'arrow-other-icon', html: getDirectionalIconHTML(false), iconSize: [32, 32], iconAnchor: [16, 16] });
         const marker = L.marker([data.lat, data.lng], { icon: icon, bearing: data.bearing || 0 }).addTo(map);
         
-        // Ambil nama depan rider lain
         const otherFirstName = (data.name || 'Rider').split(' ')[0];
-        // Tampilkan tooltip permanent di atas marker
         marker.bindTooltip(otherFirstName, { permanent: true, direction: 'top', offset: [0, -18], className: 'rider-name-tooltip' });
         
         if (data.bearing !== undefined) { 
@@ -560,14 +560,26 @@
       
       activeRidersRef.on('child_changed', (snap) => {
         if (snap.key === myUid) return;
-        const data = snap.val(); if (!data || !otherRiders[snap.key]) return;
-        animateMarker(otherRiders[snap.key], [data.lat, data.lng]);
-        otherRiders[snap.key].options.bearing = data.bearing || 0;
-        const el = otherRiders[snap.key].getElement(); 
-        if (el) { 
-          const rotator = el.querySelector('.bike-rotator'); 
-          const mapBearing = map.getBearing();
-          if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing - mapBearing}deg)`; 
+        const data = snap.val(); 
+        if (!data || !data.lat || !data.lng) return;
+        
+        // Jika marker belum ada (sebelumnya koordinatnya 0), buat marker baru
+        if (!otherRiders[snap.key]) {
+          const icon = L.divIcon({ className: 'arrow-other-icon', html: getDirectionalIconHTML(false), iconSize: [32, 32], iconAnchor: [16, 16] });
+          const marker = L.marker([data.lat, data.lng], { icon: icon, bearing: data.bearing || 0 }).addTo(map);
+          const otherFirstName = (data.name || 'Rider').split(' ')[0];
+          marker.bindTooltip(otherFirstName, { permanent: true, direction: 'top', offset: [0, -18], className: 'rider-name-tooltip' });
+          otherRiders[snap.key] = marker;
+        } else {
+          // Jika sudah ada, animasikan perpindahan
+          animateMarker(otherRiders[snap.key], [data.lat, data.lng]);
+          otherRiders[snap.key].options.bearing = data.bearing || 0;
+          const el = otherRiders[snap.key].getElement(); 
+          if (el) { 
+            const rotator = el.querySelector('.bike-rotator'); 
+            const mapBearing = map.getBearing();
+            if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing - mapBearing}deg)`; 
+          }
         }
       });
       
@@ -592,8 +604,11 @@
       document.getElementById('statusText').innerText = "Sedang melacak...";
       document.getElementById('statusText').style.color = "#059669";
       if (userMarker) { const movingIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] }); userMarker.setIcon(movingIcon); }
+      
       db.ref('activeRiders/' + myUid).onDisconnect().remove();
-      db.ref('activeRiders/' + myUid).set({ name: myName, lat: 0, lng: 0, bearing: 0 });
+      // PERBAIKAN: Set nama dan bearing dulu, tanpa lat/lng 0,0
+      db.ref('activeRiders/' + myUid).set({ name: myName, bearing: 0 });
+      
       timerInterval = setInterval(updateTimer, 1000);
       watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
     }
@@ -678,6 +693,7 @@
 
       const now = Date.now();
       if (isTracking && now - lastFirebaseUpdate > 1000) {
+        // Update lokasi ke Firebase
         db.ref('activeRiders/' + myUid).update({ lat: pos.lat, lng: pos.lng, bearing: lastBearing });
         lastFirebaseUpdate = now; saveState();
       }
