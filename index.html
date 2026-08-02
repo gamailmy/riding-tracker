@@ -192,6 +192,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
   
   <script>
     // === KONFIGURASI FILE STATIS ===
@@ -199,7 +200,6 @@
     const URL_KML_ROUTE = "touring_route.kml"; 
     
     // === KONFIGURASI OPENROUTESERVICE (ROAD SNAPPING) ===
-    // Dapatkan gratis di: https://openrouteservice.org/dev/#signup
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVhMGFlMDFjMTIzMDQxMmI4M2E3YTM4YTBkZDE3MWE4IiwiaCI6Im11cm11cjY0In0="; 
     
     const firebaseConfig = {
@@ -234,6 +234,7 @@
     let userCurrentLatLng = null;
     let lastGasUpdateCoord = null; 
     let allGasStations = []; 
+    let currentSpeed = 0; // Untuk deteksi kompas/gps
 
     // State untuk Road Snapping
     let rawPointsBuffer = [];
@@ -275,6 +276,49 @@
         if (t < 1) marker._animFrame = requestAnimationFrame(step);
       }
       step();
+    }
+
+    // Fungsi untuk update rotasi marker agar selalu tegak lurus dengan layar (jika peta diputar)
+    function updateMarkerRotation(markerEl, bearing) {
+      if (!markerEl) return;
+      const rotator = markerEl.querySelector('.bike-rotator');
+      if (rotator) {
+        const mapBearing = map.getBearing ? map.getBearing() : 0;
+        rotator.style.transform = `rotate(${bearing - mapBearing}deg)`;
+      }
+    }
+
+    // === KOMPAS SMARTPHONE ===
+    async function setupCompass() {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+          }
+        } catch (e) { console.warn("Izinkan akses sensor orientasi"); }
+      } else if (typeof DeviceOrientationEvent !== 'undefined') {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }
+
+    function handleOrientation(event) {
+      // Gunakan kompas hanya jika motor berhenti atau jalan pelan (< 5 km/j)
+      if (currentSpeed < 5) {
+        let heading = null;
+        if (typeof event.webkitCompassHeading !== 'undefined' && event.webkitCompassHeading !== null) {
+          heading = event.webkitCompassHeading; // iOS
+        } else if (event.alpha !== null) {
+          heading = 360 - event.alpha; // Android
+        }
+        if (heading !== null) {
+          lastBearing = heading;
+          if (userMarker) {
+            const el = userMarker.getElement();
+            updateMarkerRotation(el, lastBearing);
+          }
+        }
+      }
     }
 
     function getGasStationIcon() {
@@ -326,8 +370,7 @@
 
     // === ROAD SNAPPING FUNCTION ===
     async function snapToRoad(pointsBuffer) {
-      // Jika tidak ada API Key, gambar garis biasa (fallback)
-      if (!ORS_API_KEY || ORS_API_KEY === "MASUKKAN_API_KEY_ORS_DISINI") {
+      if (!ORS_API_KEY || ORS_API_KEY === "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVhMGFlMDFjMTIzMDQxMmI4M2E3YTM4YTBkZDE3MWE4IiwiaCI6Im11cm11cjY0In0=") {
         pointsBuffer.forEach(p => pathCoordinates.push([p[1], p[0]]));
         polyline.setLatLngs(pathCoordinates);
         return;
@@ -342,7 +385,7 @@
           },
           body: JSON.stringify({
             coordinates: pointsBuffer,
-            radiuses: pointsBuffer.map(() => 50) // Toleransi 50 meter dari jalan
+            radiuses: pointsBuffer.map(() => 50)
           })
         });
         const data = await response.json();
@@ -350,14 +393,24 @@
         if (data && data.features && data.features.length > 0) {
           const matchedCoords = data.features[0].geometry.coordinates;
           matchedCoords.forEach(coord => {
-            // ORS mengembalikan [lng, lat], Leaflet butuh [lat, lng]
             pathCoordinates.push([coord[1], coord[0]]);
           });
           polyline.setLatLngs(pathCoordinates);
+          
+          // Update arah panah berdasarkan jalan (Road Bearing)
+          if (matchedCoords.length >= 2) {
+            const p1 = matchedCoords[matchedCoords.length - 2];
+            const p2 = matchedCoords[matchedCoords.length - 1];
+            const snappedBearing = calculateBearing(p1[1], p1[0], p2[1], p2[0]);
+            lastBearing = snappedBearing;
+            if (userMarker) {
+              const el = userMarker.getElement();
+              updateMarkerRotation(el, lastBearing);
+            }
+          }
         }
       } catch (err) {
         console.error("Road Snapping gagal, memakai garis mentah:", err);
-        // Fallback jika API error (sinyal hilang/koneksi putus)
         pointsBuffer.forEach(p => pathCoordinates.push([p[1], p[0]]));
         polyline.setLatLngs(pathCoordinates);
       }
@@ -368,10 +421,31 @@
       if (isDarkMode) document.body.classList.add('dark-mode');
       document.getElementById('toggleDark').checked = isDarkMode;
 
-      map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-6.2088, 106.8456], 13);
+      // Inisialisasi peta dengan rotate: true (Gestur Putar Peta)
+      map = L.map('map', { zoomControl: false, attributionControl: false, rotate: true }).setView([-6.2088, 106.8456], 13);
       currentTileLayer = L.tileLayer(isDarkMode ? darkTiles : lightTiles, { maxZoom: 20 }).addTo(map);
       L.control.zoom({ position: 'bottomright' }).addTo(map);
       L.control.attribution({ prefix: false, position: 'bottomleft' }).addAttribution('© CARTO © OSM').addTo(map);
+
+      // Counter-rotate marker saat peta diputar dengan gestur jari
+      map.on('rotate', () => {
+        const mapBearing = map.getBearing();
+        if (userMarker) {
+          const el = userMarker.getElement();
+          if (el) {
+            const rotator = el.querySelector('.bike-rotator');
+            if (rotator) rotator.style.transform = `rotate(${lastBearing - mapBearing}deg)`;
+          }
+        }
+        Object.keys(otherRiders).forEach(key => {
+          const m = otherRiders[key];
+          const el = m.getElement();
+          if (el) {
+            const rotator = el.querySelector('.bike-rotator');
+            if (rotator) rotator.style.transform = `rotate(${m.options.bearing - mapBearing}deg)`;
+          }
+        });
+      });
 
       polyline = L.polyline([], { color: '#f59e0b', weight: 5 }).addTo(map);
       gasStationLayer = L.layerGroup().addTo(map);
@@ -453,16 +527,29 @@
         if (snap.key === myUid) return;
         const data = snap.val(); if (!data) return;
         const icon = L.divIcon({ className: 'arrow-other-icon', html: getDirectionalIconHTML(false), iconSize: [32, 32], iconAnchor: [16, 16] });
-        const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
+        const marker = L.marker([data.lat, data.lng], { icon: icon, bearing: data.bearing || 0 }).addTo(map);
         marker.bindTooltip(data.name, { permanent: false, direction: 'top', offset: [0, -16], className: 'rider-name-tooltip' });
-        if (data.bearing !== undefined) { const el = marker.getElement(); if (el) { const rotator = el.querySelector('.bike-rotator'); if (rotator) rotator.style.transform = `rotate(${data.bearing}deg)`; } }
+        if (data.bearing !== undefined) { 
+          const el = marker.getElement(); 
+          if (el) {
+            const rotator = el.querySelector('.bike-rotator');
+            const mapBearing = map.getBearing();
+            if (rotator) rotator.style.transform = `rotate(${data.bearing - mapBearing}deg)`;
+          }
+        }
         otherRiders[snap.key] = marker;
       });
       activeRidersRef.on('child_changed', (snap) => {
         if (snap.key === myUid) return;
         const data = snap.val(); if (!data || !otherRiders[snap.key]) return;
         animateMarker(otherRiders[snap.key], [data.lat, data.lng]);
-        const el = otherRiders[snap.key].getElement(); if (el) { const rotator = el.querySelector('.bike-rotator'); if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing}deg)`; }
+        otherRiders[snap.key].options.bearing = data.bearing || 0;
+        const el = otherRiders[snap.key].getElement(); 
+        if (el) { 
+          const rotator = el.querySelector('.bike-rotator'); 
+          const mapBearing = map.getBearing();
+          if (rotator && data.bearing !== undefined) rotator.style.transform = `rotate(${data.bearing - mapBearing}deg)`; 
+        }
       });
       activeRidersRef.on('child_removed', (snap) => { if (snap.key === myUid) return; if (otherRiders[snap.key]) { map.removeLayer(otherRiders[snap.key]); delete otherRiders[snap.key]; } });
       window.addEventListener('beforeunload', () => { saveState(); if (isTracking) db.ref('activeRiders/' + myUid).remove(); });
@@ -476,6 +563,9 @@
       isTracking = true; 
       if (!resume) { pathCoordinates = []; totalDistance = 0; startTime = Date.now(); polyline.setLatLngs([]); rawPointsBuffer = []; }
       gpsRetryCount = 0;
+      
+      setupCompass(); // Minta izin kompas saat mulai tracking
+      
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Selesai Perjalanan</span>`;
       btn.classList.add('stop');
@@ -491,6 +581,12 @@
     function stopTracking() {
       isTracking = false;
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      
+      if (rawPointsBuffer.length > 1) {
+        snapToRoad([...rawPointsBuffer]);
+        rawPointsBuffer = [];
+      }
+      
       clearInterval(timerInterval); localStorage.removeItem('oac_track_state');
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Mulai Perjalanan</span>`;
@@ -498,6 +594,7 @@
       document.getElementById('statusText').innerText = "Perjalanan dihentikan";
       document.getElementById('statusText').style.color = "#64748b";
       document.getElementById('speedVal').innerText = "0.0";
+      currentSpeed = 0;
       if (userMarker) { const staticIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] }); userMarker.setIcon(staticIcon); }
       db.ref('activeRiders/' + myUid).remove();
     }
@@ -522,9 +619,12 @@
         if (lastCoord) {
           const dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
           if (dist > 0.005) {
-            lastBearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
-            const el = userMarker.getElement();
-            if (el) { const rotator = el.querySelector('.bike-rotator'); if (rotator) rotator.style.transform = `rotate(${lastBearing}deg)`; }
+            // Jika moving dan tidak ada data snapped bearing, pakai GPS bearing
+            if (currentSpeed >= 5) {
+              lastBearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+              const el = userMarker.getElement();
+              updateMarkerRotation(el, lastBearing);
+            }
             totalDistance += dist;
           }
         }
@@ -532,16 +632,12 @@
       map.panTo([pos.lat, pos.lng]);
       
       // --- LOGIKA ROAD SNAPPING ---
-      // Tambahkan titik mentah ke buffer (format ORS: [lng, lat])
       rawPointsBuffer.push([pos.lng, pos.lat]);
       
-      // Kirim ke API setiap 4 titik (menghemat kuota API & mencegah lag)
       if (rawPointsBuffer.length >= 4) {
         snapToRoad([...rawPointsBuffer]);
-        // Sisakan 1 titik terakhir untuk menyambung batch berikutnya
         rawPointsBuffer = [rawPointsBuffer[rawPointsBuffer.length - 1]];
       } else if (pathCoordinates.length === 0 && rawPointsBuffer.length === 1) {
-        // Titik pertama saat mulai agar langsung ada garis
         pathCoordinates.push([pos.lat, pos.lng]);
         polyline.setLatLngs(pathCoordinates);
       }
@@ -553,6 +649,8 @@
       if (position.coords.speed != null && position.coords.speed >= 0) { speed = position.coords.speed * 3.6; } 
       else if (lastSpeedPos) { const dt = (Date.now() - lastSpeedTime) / 1000; const dd = calculateDistance(lastSpeedPos.lat, lastSpeedPos.lng, pos.lat, pos.lng); if (dt > 0 && dd < 0.5) speed = (dd / dt) * 3600; }
       lastSpeedPos = pos; lastSpeedTime = Date.now();
+      currentSpeed = speed; // Update state kecepatan
+      
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
