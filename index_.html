@@ -49,6 +49,7 @@
     
     .stat-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 2px; }
     .stat-value { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; font-variant-numeric: tabular-nums; }
+    .stat-value-sm { font-size: 18px; }
     .stat-value-light { color: #ffffff; }
     .stat-unit { font-size: 9px; font-weight: 700; color: #64748b; }
     .stat-unit-light { color: #94a3b8; }
@@ -58,33 +59,32 @@
     .track-btn.stop { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); }
 
     /* Ikon Motor & Animasi */
-    .bike-wrapper { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+    .bike-wrapper { position: relative; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; z-index: 10; }
     
-    /* Efek Pulse (Denyut) Biru Mencolok */
-    .pulse-core { 
+    .pulse-circle { 
       position: absolute; top: 50%; left: 50%; 
-      transform: translate(-50%, -50%); 
-      width: 48px; height: 48px; border-radius: 50%; 
-      background: rgba(59, 130, 246, 0.3); 
+      transform: translate(-50%, -50%) scale(0.8); 
+      width: 60px; height: 60px; border-radius: 50%; 
+      animation: pulseBlink 2s infinite ease-in-out; 
+      z-index: 0;
+      will-change: transform, opacity;
+    }
+    .pulse-self { 
+      background: rgba(59, 130, 246, 0.6); 
       border: 2px solid rgba(37, 99, 235, 0.9); 
-      box-shadow: 0 0 15px rgba(37, 99, 235, 0.7); 
-      z-index: 0; 
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.5); 
     }
-    .pulse-ring { 
-      position: absolute; top: 50%; left: 50%; 
-      width: 48px; height: 48px; border-radius: 50%; 
-      border: 3px solid rgba(37, 99, 235, 0.8); 
-      z-index: 0; 
-      animation: pulseBlink 1.8s infinite ease-out; 
+    .pulse-other { 
+      background: rgba(239, 68, 68, 0.4); 
+      border: 2px solid rgba(239, 68, 68, 0.7); 
     }
-    .pulse-other { border-color: rgba(239, 68, 68, 0.8) !important; background: rgba(239, 68, 68, 0.2) !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.6) !important; }
     
     @keyframes pulseBlink {
-      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+      0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
-    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; position: relative; z-index: 1; }
+    .bike-rotator { width: 100%; height: 100%; transition: transform 0.5s ease-out; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
 
     @keyframes bikeRumble {
       0% { transform: translate(0, 0) rotate(0deg); }
@@ -96,6 +96,7 @@
     .bike-moving-icon .bike-rotator svg { animation: bikeRumble 0.2s infinite linear; }
     .bike-rotator svg { filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6)); }
 
+    /* Tooltip Pom Bensin & Nama Rider */
     .rider-name-tooltip {
       background: rgba(255, 255, 255, 0.95) !important;
       border: 1px solid #cbd5e1 !important;
@@ -122,10 +123,10 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn3D" class="header-btn" title="Ubah Tampilan 3D">
+        <button id="btn3D" class="header-btn" aria-label="Aktifkan tampilan 3D">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
         </button>
-        <button id="centerBtn" class="header-btn">
+        <button id="centerBtn" class="header-btn" aria-label="Pusatkan ke lokasi saya">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
@@ -145,7 +146,7 @@
         </div>
         <div class="stat-card stat-light">
           <div class="stat-label">Durasi</div>
-          <div class="stat-value-wrap"><span id="timeVal" class="stat-value" style="font-size: 18px;">00:00</span></div>
+          <div class="stat-value-wrap"><span id="timeVal" class="stat-value stat-value-sm">00:00</span></div>
         </div>
       </div>
       <button id="trackBtn" class="track-btn">
@@ -159,9 +160,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   
   <script>
-    // PENANDA UPDATE: Jika ini muncul di Console browser, berarti file baru sudah termuat.
-    console.log("OAC Riding Tracker Script v5 - Modern Red Matic");
-
     const firebaseConfig = {
       apiKey: "AIzaSyC_Lp9IMTfC0D1pSFeDbjW2ugyg22tFfTc",
       authDomain: "oneaspalclub.firebaseapp.com",
@@ -175,50 +173,57 @@
     const db = firebase.database();
 
     const urlParams = new URLSearchParams(window.location.search);
-    const myUid = urlParams.get('uid') || 'guest_' + Math.random().toString(36).substr(2, 9);
+    const myUid = urlParams.get('uid') || 'guest_' + Math.random().toString(36).substring(2, 11);
     const myName = urlParams.get('name') || 'Rider';
 
     let map;
     let isTracking = false, is3D = false, watchId = null, pathCoordinates = [], totalDistance = 0, lastCoord = null, startTime = null, timerInterval = null;
     let userMarkerEl, userMarker;
     let otherRiders = {}; 
+    
+    let lastBearing = 0; 
+    let lastSpeedTime = null; 
+    let isFirstFix = true; 
+    let isFetchingGas = false; // Proteksi agar tidak spam API pom bensin
 
-    // Ikon Motor Matic Merah Modern
     function getBikeIconHTML(isSelf = true) {
-      const coreClass = isSelf ? '' : 'pulse-other';
-      const bodyColor1 = isSelf ? '#dc2626' : '#3b82f6'; 
-      const bodyColor2 = isSelf ? '#991b1b' : '#1d4ed8';
-      const wheelStroke = isSelf ? '#ef4444' : '#60a5fa';
+      const pulseClass = isSelf ? 'pulse-self' : 'pulse-other';
+      const mainColor = isSelf ? '#ef4444' : '#3b82f6'; 
+      const darkColor = isSelf ? '#b91c1c' : '#1d4ed8';
+      const movingClass = isTracking && isSelf ? 'bike-moving-icon' : '';
       
       return `
-        <div class="bike-wrapper ${isTracking && isSelf ? 'bike-moving-icon' : ''}">
-          <div class="pulse-ring ${coreClass}"></div>
-          <div class="pulse-core ${coreClass}"></div>
+        <div class="bike-wrapper ${movingClass}">
+          <div class="pulse-circle ${pulseClass}"></div>
           <div class="bike-rotator">
-            <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 64 64" fill="none">
-              <ellipse cx="32" cy="54" rx="20" ry="3" fill="rgba(0,0,0,0.35)"/>
-              <path d="M12 54 H52" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.8"/>
-              <circle cx="14" cy="42" r="8" fill="#1e293b" stroke="${wheelStroke}" stroke-width="1.5"/>
-              <circle cx="14" cy="42" r="4" fill="#475569"/>
-              <circle cx="14" cy="42" r="1.5" fill="#0f172a"/>
-              <path d="M14 36 V48 M8 42 H20" stroke="#94a3b8" stroke-width="1.5"/>
-              <circle cx="50" cy="42" r="8" fill="#1e293b" stroke="${wheelStroke}" stroke-width="1.5"/>
-              <circle cx="50" cy="42" r="4" fill="#475569"/>
-              <circle cx="50" cy="42" r="1.5" fill="#0f172a"/>
-              <path d="M50 36 V48 M44 42 H56" stroke="#94a3b8" stroke-width="1.5"/>
-              <path d="M14 42 C14 34, 18 30, 26 29 L40 28 C45 27.5, 48 30, 48 36 L48 42" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M20 32 C24 28, 30 27, 34 29 L32 34 H20Z" fill="#0f172a" stroke="#ffffff" stroke-width="1.5"/>
-              <path d="M40 28 L45 20 H51 C53 20, 54 22, 52.5 24 L48 33" fill="${bodyColor2}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M45 20 L48 14 H51 C53 14, 53.5 16, 52 18 L45 20Z" fill="#e0f2fe" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              <path d="M50 26 C52 26, 53 28, 51.5 30 L48 30 Z" fill="#fef08a" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
-              <path d="M48 20 L46 12 M51 12 H41" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="51" cy="12" r="2" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1"/>
-              <circle cx="41" cy="12" r="2" fill="${bodyColor1}" stroke="#ffffff" stroke-width="1"/>
-              <path d="M14 44 L9 46" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 64 64" fill="none">
+              <ellipse cx="32" cy="56" rx="20" ry="3" fill="rgba(0,0,0,0.35)"/>
+              <circle cx="14" cy="46" r="9" fill="#111827" stroke="#374151" stroke-width="3"/>
+              <circle cx="14" cy="46" r="3.5" fill="#6b7280"/>
+              <circle cx="50" cy="46" r="9" fill="#111827" stroke="#374151" stroke-width="3"/>
+              <circle cx="50" cy="46" r="3.5" fill="#6b7280"/>
+              <path d="M14 46 L34 42 L50 46" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M18 44 C22 34, 30 32, 38 33 L48 35 C52 35.5, 53 38, 51 40 L46 45 L18 45 Z" fill="${mainColor}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M24 40 C28 35, 34 34, 38 36 L34 42 H22Z" fill="#0f172a" stroke="#ffffff" stroke-width="1.2"/>
+              <path d="M18 44 L14 44 C12 44, 12 40, 16 40 L22 40" fill="#1f2937" stroke="#ffffff" stroke-width="1.2"/>
+              <path d="M48 35 L54 27 C56 24, 58 26, 57 30 L53 40" fill="${darkColor}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M54 30 C56 30, 56.5 32, 55 34 L52 33 Z" fill="#fde68a" stroke="#ffffff" stroke-width="1"/>
+              <path d="M54 27 L57 20 C58.5 17, 60 19, 59 22 L56 28" fill="#bfdbfe" stroke="#ffffff" stroke-width="1"/>
+              <path d="M53 27 L50 18 M55 18 H45" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="55" cy="18" r="2.5" fill="${darkColor}" stroke="#ffffff" stroke-width="1"/>
+              <circle cx="45" cy="18" r="2.5" fill="${darkColor}" stroke="#ffffff" stroke-width="1"/>
+              <path d="M18 46 L13 48" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
             </svg>
           </div>
         </div>
       `;
+    }
+
+    function refreshUserIcon() {
+      if (!userMarkerEl) return;
+      userMarkerEl.innerHTML = getBikeIconHTML(true);
+      const rotator = userMarkerEl.querySelector('.bike-rotator');
+      if (rotator) rotator.style.transform = `rotate(${lastBearing - 90}deg)`;
     }
 
     function calculateBearing(lat1, lon1, lat2, lon2) {
@@ -227,6 +232,38 @@
       const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
       let brng = Math.atan2(y, x) * 180 / Math.PI;
       return (brng + 360) % 360;
+    }
+
+    // FITUR BARU: Mengambil data Pom Bensin dari OpenStreetMap
+    async function fetchGasStations() {
+      if (isFetchingGas) return;
+      isFetchingGas = true;
+      
+      try {
+        const bounds = map.getBounds();
+        const south = bounds.getSouth(), west = bounds.getWest();
+        const north = bounds.getNorth(), east = bounds.getEast();
+        
+        const query = `[out:json][timeout:10];(node["amenity"="fuel"](${south},${west},${north},${east}););out;`;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        const features = data.elements.map(el => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [el.lon, el.lat] },
+          properties: { name: el.tags?.name || el.tags?.brand || 'Pom Bensin' }
+        }));
+
+        if (map.getSource('gas-stations')) {
+          map.getSource('gas-stations').setData({ type: 'FeatureCollection', features });
+        }
+      } catch (e) {
+        console.error("Gagal memuat pom bensin:", e);
+      } finally {
+        isFetchingGas = false;
+      }
     }
 
     function initMap() {
@@ -238,8 +275,6 @@
         pitch: 0,
         bearing: 0
       });
-
-      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
       map.on('load', () => {
         const layers = map.getStyle().layers;
@@ -268,8 +303,49 @@
 
         map.setLayoutProperty('3d-buildings', 'visibility', 'none');
 
+        // Layer Jalur Rute
         map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
         map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.8 } });
+
+        // FITUR BARU: Layer Pom Bensin
+        map.addSource('gas-stations', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        
+        map.addLayer({
+          id: 'gas-station-bg',
+          type: 'circle',
+          source: 'gas-stations',
+          paint: {
+            'circle-radius': 14,
+            'circle-color': '#ffffff',
+            'circle-stroke-color': '#0f172a',
+            'circle-stroke-width': 2
+          }
+        }, labelLayerId);
+
+        map.addLayer({
+          id: 'gas-station-icon',
+          type: 'symbol',
+          source: 'gas-stations',
+          layout: {
+            'text-field': '⛽',
+            'text-size': 14,
+            'text-allow-overlap': true
+          }
+        }, labelLayerId);
+
+        // Popup Pom Bensin saat diklik
+        const gasPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'rider-name-tooltip' });
+        map.on('click', 'gas-station-bg', (e) => {
+          const coordinates = e.features[0].geometry.coordinates.slice();
+          const name = e.features[0].properties.name;
+          gasPopup.setLngLat(coordinates).setHTML(`<b>${name}</b>`).addTo(map);
+        });
+        map.on('mouseenter', 'gas-station-bg', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'gas-station-bg', () => { map.getCanvas().style.cursor = ''; gasPopup.remove(); });
+
+        // Ambil pom bensin saat pertama kali load dan saat peta digerakkan
+        fetchGasStations();
+        map.on('moveend', fetchGasStations);
 
         document.getElementById('centerBtn').addEventListener('click', () => {
           if (navigator.geolocation) {
@@ -298,10 +374,13 @@
             map.flyTo({ center: [initPos.lng, initPos.lat], zoom: 17, essential: true });
             
             userMarkerEl = document.createElement('div');
-            userMarkerEl.style.width = '56px';
-            userMarkerEl.style.height = '56px';
+            userMarkerEl.style.width = '54px';
+            userMarkerEl.style.height = '54px';
             userMarkerEl.innerHTML = getBikeIconHTML(true);
-            userMarker = new maplibregl.Marker(userMarkerEl, { anchor: 'center' }).setLngLat([initPos.lng, initPos.lat]).addTo(map);
+            
+            userMarker = new maplibregl.Marker({ element: userMarkerEl, anchor: 'center' })
+              .setLngLat([initPos.lng, initPos.lat])
+              .addTo(map);
             
             document.getElementById('statusText').innerText = "Siap memulai perjalanan";
           }, (err) => {
@@ -313,13 +392,16 @@
         activeRidersRef.on('child_added', (snap) => {
           if (snap.key === myUid) return; 
           const data = snap.val();
-          if (!data) return;
+          if (!data || data.lat == null || data.lng == null) return; 
           
           const el = document.createElement('div');
-          el.style.width = '56px';
-          el.style.height = '56px';
+          el.style.width = '54px';
+          el.style.height = '54px';
           el.innerHTML = getBikeIconHTML(false);
-          const marker = new maplibregl.Marker(el, { anchor: 'center' }).setLngLat([data.lng, data.lat]).addTo(map);
+          
+          const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+            .setLngLat([data.lng, data.lat])
+            .addTo(map);
           
           const popup = new maplibregl.Popup({ offset: 25, closeButton: false, className: 'rider-name-tooltip' }).setText(data.name);
           marker.setPopup(popup).addTo(map);
@@ -334,7 +416,7 @@
         activeRidersRef.on('child_changed', (snap) => {
           if (snap.key === myUid) return;
           const data = snap.val();
-          if (!data || !otherRiders[snap.key]) return;
+          if (!data || !otherRiders[snap.key] || data.lat == null || data.lng == null) return;
 
           otherRiders[snap.key].marker.setLngLat([data.lng, data.lat]);
           const rotator = otherRiders[snap.key].el.querySelector('.bike-rotator');
@@ -357,7 +439,15 @@
 
     function startTracking() {
       if (!navigator.geolocation) { alert("Browser tidak mendukung GPS."); return; }
-      isTracking = true; pathCoordinates = []; totalDistance = 0; lastCoord = null; startTime = Date.now(); 
+      isTracking = true; 
+      pathCoordinates = []; 
+      totalDistance = 0; 
+      lastCoord = null; 
+      startTime = Date.now(); 
+      isFirstFix = true; 
+      lastSpeedTime = null; 
+      
+      map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
       
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Selesai Perjalanan</span>`;
@@ -368,12 +458,9 @@
       document.getElementById('speedVal').innerText = "0.0";
       document.getElementById('distVal').innerText = "0.00";
 
-      if (userMarkerEl) {
-        userMarkerEl.innerHTML = getBikeIconHTML(true);
-      }
+      refreshUserIcon();
 
       db.ref('activeRiders/' + myUid).onDisconnect().remove();
-      db.ref('activeRiders/' + myUid).set({ name: myName, lat: 0, lng: 0, bearing: 0 });
 
       timerInterval = setInterval(updateTimer, 1000);
       watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
@@ -391,28 +478,30 @@
       document.getElementById('statusText').style.color = "#64748b";
       document.getElementById('speedVal').innerText = "0.0";
 
-      if (userMarkerEl) {
-        userMarkerEl.innerHTML = getBikeIconHTML(true);
-        if (is3D) map.easeTo({ bearing: 0, pitch: 60, duration: 500 });
-        else map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
-      }
+      refreshUserIcon();
+
+      if (is3D) map.easeTo({ bearing: 0, pitch: 60, duration: 500 });
 
       db.ref('activeRiders/' + myUid).remove();
     }
 
     function onSuccess(position) {
       const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-      let bearing = 0;
+      let bearing = lastBearing; 
+      let dist = 0;
       
       if (userMarker) {
         userMarker.setLngLat([pos.lng, pos.lat]);
         
         if (lastCoord) {
-          const dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
-          if (dist > 0.005) {
+          dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+          if (dist > 0.005) { 
             bearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
+            lastBearing = bearing; 
+            
             const rotator = userMarkerEl.querySelector('.bike-rotator');
             if (rotator) rotator.style.transform = `rotate(${bearing - 90}deg)`;
+            
             totalDistance += dist;
           }
         }
@@ -428,12 +517,27 @@
       }
       
       lastCoord = pos;
-      let speed = position.coords.speed ? position.coords.speed * 3.6 : 0;
+      
+      let speed = 0;
+      if (position.coords.speed != null && position.coords.speed > 0) {
+        speed = position.coords.speed * 3.6;
+      } else if (dist > 0.005 && lastSpeedTime) {
+        const dt = (Date.now() - lastSpeedTime) / 1000; 
+        if (dt > 0) speed = (dist * 1000 / dt) * 3.6; 
+      }
+      
+      if (dist > 0.005) lastSpeedTime = Date.now();
+      
       document.getElementById('speedVal').innerText = speed.toFixed(1);
       document.getElementById('distVal').innerText = totalDistance.toFixed(2);
 
       if (isTracking) {
-        db.ref('activeRiders/' + myUid).update({ lat: pos.lat, lng: pos.lng, bearing: bearing });
+        if (isFirstFix) {
+          db.ref('activeRiders/' + myUid).set({ name: myName, lat: pos.lat, lng: pos.lng, bearing: bearing });
+          isFirstFix = false;
+        } else {
+          db.ref('activeRiders/' + myUid).update({ lat: pos.lat, lng: pos.lng, bearing: bearing });
+        }
       }
     }
 
@@ -453,6 +557,10 @@
       const e = Math.floor((Date.now() - startTime) / 1000);
       document.getElementById('timeVal').innerText = `${String(Math.floor(e / 60)).padStart(2, '0')}:${String(e % 60).padStart(2, '0')}`;
     }
+    
+    window.addEventListener('beforeunload', () => {
+      if (isTracking) db.ref('activeRiders/' + myUid).remove();
+    });
     
     window.onload = initMap;
   </script>
