@@ -84,7 +84,8 @@
       50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
     }
 
-    .arrow-rotator { width: 100%; height: 100%; transition: transform 0.2s ease-out; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
+    /* Hapus CSS transition agar tidak bentrok dengan smoothing JS */
+    .arrow-rotator { width: 100%; height: 100%; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
 
     /* Desain Marker Pom Bensin */
     .gas-marker {
@@ -188,13 +189,14 @@
     let gpsBearing = 0;
     let compassHeading = 0;
     let currentHeading = 0;
+    let targetHeading = 0;
     let isMoving = false;
     
     let lastSpeedTime = null; 
     let isFirstFix = true; 
     let isFetchingGas = false; 
 
-    // Desain Panah Modern (Default menghadap Utara / 0 Derajat)
+    // Desain Panah Modern
     function getArrowIconHTML(isSelf = true) {
       const pulseClass = isSelf ? 'pulse-self' : 'pulse-other';
       const mainColor = isSelf ? '#3b82f6' : '#ef4444'; 
@@ -233,23 +235,40 @@
       }
     }
 
-    // FITUR GYRO: Memproses data Kompas / Gyroscope
+    // FIX JITTER: Algoritma Smoothing untuk arah panah
+    function getAngleDifference(current, target) {
+      let diff = target - current;
+      while (diff < -180) diff += 360;
+      while (diff > 180) diff -= 360;
+      return diff;
+    }
+
+    function animateArrow() {
+      const diff = getAngleDifference(currentHeading, targetHeading);
+      if (Math.abs(diff) > 0.5) {
+        currentHeading += diff * 0.15; // Gerakkan 15% menuju target (makin halus)
+        updateMarkerRotation();
+      }
+      requestAnimationFrame(animateArrow);
+    }
+
+    // FITUR GYRO: Memproses data Kompas / Gyroscope dengan Low Pass Filter
     function handleOrientation(event) {
       let heading = null;
       if (event.webkitCompassHeading !== undefined) {
-        // Untuk iOS Safari
         heading = event.webkitCompassHeading;
       } else if (event.alpha !== null && event.absolute) {
-        // Untuk Android / Browser lain
         heading = 360 - event.alpha;
       }
       
       if (heading !== null) {
-        compassHeading = heading;
-        // Jika pengguna berhenti / pelan, panah ikut arah hadap HP
-        if (!isMoving) {
-          currentHeading = compassHeading;
-          updateMarkerRotation();
+        // Filter Smoothing untuk Kompas agar tidak mudah goyah
+        let diff = getAngleDifference(compassHeading, heading);
+        if (Math.abs(diff) > 1) {
+          compassHeading += diff * 0.2; 
+          if (!isMoving) {
+            targetHeading = compassHeading;
+          }
         }
       }
     }
@@ -318,6 +337,9 @@
         pitch: 0,
         bearing: 0
       });
+
+      // Jalankan animasi smoothing panah
+      animateArrow();
 
       map.on('load', () => {
         const layers = map.getStyle().layers;
@@ -453,6 +475,7 @@
       isFirstFix = true; 
       lastSpeedTime = null; 
       
+      // FIX 1: Pastikan garis rute kosong saat mulai
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
       
       const btn = document.getElementById('trackBtn');
@@ -486,8 +509,13 @@
 
     function stopTracking() {
       isTracking = false;
+      isMoving = false;
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       clearInterval(timerInterval);
+      
+      // FIX 1: Hapus garis moving line ketika perjalanan dihentikan
+      pathCoordinates = [];
+      map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
       
       const btn = document.getElementById('trackBtn');
       btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Mulai Perjalanan</span>`;
@@ -511,7 +539,6 @@
         if (lastCoord) {
           dist = calculateDistance(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
           if (dist > 0.005) {
-            // Update Arah GPS saat bergerak
             gpsBearing = calculateBearing(lastCoord.lat, lastCoord.lng, pos.lat, pos.lng);
             lastSpeedTime = Date.now();
             totalDistance += dist;
@@ -522,7 +549,6 @@
       pathCoordinates.push([pos.lng, pos.lat]); 
       map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoordinates } });
       
-      // Hitung Kecepatan
       let speed = 0;
       if (position.coords.speed != null && position.coords.speed > 0) {
         speed = position.coords.speed * 3.6;
@@ -531,14 +557,13 @@
         if (dt > 0) speed = (dist * 1000 / dt) * 3.6; 
       }
 
-      // Logika Panah: Jika di atas 3km/jam ikut GPS, jika di bawahnya ikut Gyro
+      // Logika Panah
       isMoving = speed > 3; 
       if (isMoving) {
-        currentHeading = gpsBearing;
+        targetHeading = gpsBearing;
       } else {
-        currentHeading = compassHeading;
+        targetHeading = compassHeading;
       }
-      updateMarkerRotation();
 
       // Update UI
       document.getElementById('speedVal').innerText = speed.toFixed(1);
@@ -553,7 +578,6 @@
       
       lastCoord = pos;
 
-      // Kirim Data Firebase
       if (isTracking) {
         if (isFirstFix) {
           db.ref('activeRiders/' + myUid).set({ name: myName, lat: pos.lat, lng: pos.lng, bearing: currentHeading });
