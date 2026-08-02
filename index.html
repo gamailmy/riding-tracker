@@ -131,12 +131,18 @@
     </div>
   </div>
 
-  <!-- Firebase & Leaflet JS -->
+  <!-- Firebase, Leaflet & Omnivore (untuk KML) JS -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
   
   <script>
+    // === KONFIGURASI RUTE KML ===
+    // Ganti URL di bawah ini dengan URL file KML Anda. 
+    // Jika tidak ada rute, biarkan kosong: const URL_KML_ROUTE = "";
+    const URL_KML_ROUTE = "touring_route.kml"; 
+    
     // Konfigurasi Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyC_Lp9IMTfC0D1pSFeDbjW2ugyg22tFfTc",
@@ -177,7 +183,6 @@
     // Ikon Panah Pengarah - Eksplisit Hardcode (Self=Merah, Other=Biru)
     function getDirectionalIconHTML(isSelf = true) {
       if (isSelf) {
-        // MERAH UNTUK DIRI SENDIRI
         return `
           <div class="bike-wrapper">
             <div class="pulse-circle pulse-self"></div>
@@ -189,7 +194,6 @@
           </div>
         `;
       } else {
-        // BIRU UNTUK ORANG LAIN
         return `
           <div class="bike-wrapper">
             <div class="pulse-circle pulse-other"></div>
@@ -280,7 +284,6 @@
         console.error("Gagal memuat data pom bensin:", error);
       }
     }
-    // ========================
 
     function initMap() {
       map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-6.2088, 106.8456], 13);
@@ -289,9 +292,24 @@
       L.control.attribution({ prefix: false, position: 'bottomleft' }).addAttribution('© CARTO © OSM').addTo(map);
 
       polyline = L.polyline([], { color: '#f59e0b', weight: 5 }).addTo(map);
-      
-      // Inisialisasi Layer Pom Bensin
       gasStationLayer = L.layerGroup().addTo(map);
+
+      // === LOAD RUTE KML ===
+      if (URL_KML_ROUTE && URL_KML_ROUTE !== "") {
+        const touringLayer = L.geoJson(null, {
+          style: { color: "#2563eb", weight: 6, opacity: 0.8, dashArray: "10, 10", lineCap: "round" }
+        });
+        
+        // Menggunakan leaflet-omnivore untuk load KML
+        const kmlLayer = omnivore.kml(URL_KML_ROUTE, null, touringLayer).addTo(map);
+        
+        kmlLayer.on('ready', function() {
+          // Otomatis zoom ke rute touring saat pertama kali dibuka
+          map.fitBounds(kmlLayer.getBounds(), { padding: [60, 60] });
+        }).on('error', function(e) {
+          console.warn("Gagal memuat file KML. Pastikan URL/path benar dan diizinkan (CORS).", e);
+        });
+      }
 
       document.getElementById('centerBtn').addEventListener('click', () => {
         if (navigator.geolocation) {
@@ -302,14 +320,14 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
           const initPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          map.setView([initPos.lat, initPos.lng], 16);
           
-          // PANGGIL DENGAN PARAMETER true (MERAH)
+          // Jika KML tidak ada, set view ke lokasi user. Jika KML ada, biarkan KML yang set view.
+          if (URL_KML_ROUTE === "") map.setView([initPos.lat, initPos.lng], 16);
+          
           const arrowIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] });
           userMarker = L.marker([initPos.lat, initPos.lng], { icon: arrowIcon }).addTo(map);
           document.getElementById('statusText').innerText = "Siap memulai perjalanan";
           
-          // Cari pom bensin awal
           fetchGasStations(initPos.lat, initPos.lng);
           lastGasFetchCoord = initPos;
           
@@ -326,7 +344,6 @@
         const data = snap.val();
         if (!data) return;
         
-        // PANGGIL DENGAN PARAMETER false (BIRU)
         const icon = L.divIcon({ className: 'arrow-other-icon', html: getDirectionalIconHTML(false), iconSize: [32, 32], iconAnchor: [16, 16] });
         const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
         marker.bindTooltip(data.name, { permanent: false, direction: 'top', offset: [0, -16], className: 'rider-name-tooltip' });
@@ -390,7 +407,6 @@
       document.getElementById('statusText').style.color = "#059669";
 
       if (userMarker) {
-        // PANGGIL DENGAN PARAMETER true (MERAH)
         const movingIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] });
         userMarker.setIcon(movingIcon);
       }
@@ -416,7 +432,6 @@
       document.getElementById('speedVal').innerText = "0.0";
 
       if (userMarker) {
-        // PANGGIL DENGAN PARAMETER true (MERAH)
         const staticIcon = L.divIcon({ className: 'arrow-icon', html: getDirectionalIconHTML(true), iconSize: [32, 32], iconAnchor: [16, 16] });
         userMarker.setIcon(staticIcon);
       }
